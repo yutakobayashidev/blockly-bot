@@ -34,7 +34,7 @@ import BlocklyComponent, {
 import "./blocks/customblocks";
 import "./generator/generator";
 
-function App() {
+export default function App() {
   return (
     <div className="App">
       <header className="App-header">
@@ -53,26 +53,20 @@ function App() {
 </xml>
       `}
         >
-          <Category name="SenseBoxen" colour="#4F6272">
-            <Block type="test_react_field" />
-            <Block type="test_react_date_field" />
-            <Block type="controls_ifelse" />
+          <Category name="Logic" categorystyle="logic_category">
+            <Block type="controls_if" />
             <Block type="logic_compare" />
-            <Block type="logic_operation" />{" "}
-          </Category>
-          <Category name="SenseBoxen" colour="#4F6272">
-            <Block type="controls_repeat_ext">
-              <Value name="TIMES">
-                <Shadow type="math_number">
-                  <Field name="NUM">10</Field>
-                </Shadow>
-              </Value>
-            </Block>
             <Block type="logic_operation" />
             <Block type="logic_negate" />
             <Block type="logic_boolean" />
-            <Block type="logic_null" disabled="true" />
             <Block type="logic_ternary" />
+          </Category>
+          <Category name="Loops" categorystyle="loop_category">
+            <Block type="controls_repeat" />
+            <Block type="controls_whileUntil" />
+            <Block type="controls_forEach" />
+          </Category>
+          <Category name="Text" colour="#5C68A6">
             <Block type="text_charAt">
               <Value name="VALUE">
                 <Block type="variables_get">
@@ -81,10 +75,46 @@ function App() {
               </Value>
             </Block>
           </Category>
+          <Category name="Math">
+            <Block type="math_number"></Block>
+            <Block type="math_arithmetic"></Block>
+            <Block type="math_single"></Block>
+          </Category>
+          <Category name="Text">
+            <Block type="text"></Block>
+            <Block type="text_length"></Block>
+            <Block type="text_print"></Block>
+            <Block type="text_prompt_ext"></Block>
+          </Category>
+          <Category name="Lists">
+            <Block type="lists_create_with"></Block>
+            <Block type="lists_repeat">
+              <Value name="NUM">
+                <Shadow type="math_number">
+                  <Field name="NUM">5</Field>
+                </Shadow>
+              </Value>
+            </Block>
+            <Block type="lists_indexOf">
+              <Value name="VALUE">
+                <Block type="variables_get">
+                  <Field name="VAR">{"{listVariable}"}</Field>
+                </Block>
+              </Value>
+            </Block>
+          </Category>
+          <Category name="Variables" custom="VARIABLE" />
+          <Category name="Functions" custom="PROCEDURE" />
+          <Category name="Values">
+            <Block type="math_number" />
+            <Block type="text" />
+          </Category>
+          <Category name="Custom Blocks" colour="#4F6272">
+            <Block type="test_react_field" />
+            <Block type="test_react_date_field" />
+          </Category>
         </BlocklyComponent>
       </header>
     </div>
   );
 }
-
-export default App;
