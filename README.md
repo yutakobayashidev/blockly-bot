@@ -1,28 +1,21 @@
-[Home](../README.md)
+# blockly-gpt [![Built on Blockly](https://tinyurl.com/built-on-blockly)](https://github.com/google/blockly)
 
-# blockly-react-sample [![Built on Blockly](https://tinyurl.com/built-on-blockly)](https://github.com/google/blockly)
-
-This sample shows how to load Blockly in a [React](https://reactjs.org/) project.
+Blockly のブロックを GPT で作ってみるテスト。
 
 ## Running the sample
 
 ### Installation
 
 ```
-npm install
+bun i
 ```
 
 ### Running
 
 ```
-npm run start
+bun run start
 ```
 
 ### Browse
 
 Open [http://localhost:3000/](http://localhost:3000/)
-
-## Community projects
-
-[react-blockly](https://github.com/nbudin/react-blockly):
-A React component that embeds Blockly. It uses the official [Blockly npm package](https://www.npmjs.com/package/blockly).
