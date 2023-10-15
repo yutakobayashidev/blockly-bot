@@ -35,7 +35,7 @@ Blockly.setLocale(locale);
 function BlocklyComponent(props) {
   const blocklyDiv = useRef();
   const toolbox = useRef();
-  let primaryWorkspace = useRef();
+  let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const generateCode = () => {
     var code = javascriptGenerator.workspaceToCode(primaryWorkspace.current);

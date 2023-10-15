@@ -43,5 +43,11 @@
       "build/index.html",
       "build/**/*"
     ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.6",
+    "@types/react": "^18.2.28",
+    "@types/react-dom": "^18.2.13",
+    "typescript": "^5.2.2"
   }
 }

@@ -28,7 +28,7 @@ import BlocklyComponent, { Block, Value, Field, Shadow } from "./Blockly";
 import "./blocks/customblocks";
 import "./generator/generator";
 
-function App(props) {
+function App() {
   return (
     <div className="App">
       <header className="App-header">
