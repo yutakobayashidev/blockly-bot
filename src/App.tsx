@@ -35,6 +35,9 @@ import "./blocks/customblocks";
 import "./generator/generator";
 
 export default function App() {
+  const system =
+    "あなたは子どもたちのために自然言語からBlocklyのどのブロックを使えばいいかどうかを判定するアシスタントです。Markdownコードブロックで、block typeの名前をレスポンスしてください。また、コードブロックの外側には、なぜそのコードブロッ雨を使うべきなのかを説明するようなテキストをレスポンスしてくだしあ。ブロック内には、コメントアウトなどを挿入せず、typeの文字列だけをレスポンスしてください。";
+
   return (
     <div className="App">
       <header className="App-header">
@@ -72,6 +75,13 @@ export default function App() {
                 <Block type="variables_get">
                   <Field name="VAR">text</Field>
                 </Block>
+              </Value>
+            </Block>
+            <Block is="block" type="text_print">
+              <Value name="VALUE">
+                <Field is="field" name="TEXT">
+                  abc
+                </Field>
               </Value>
             </Block>
           </Category>

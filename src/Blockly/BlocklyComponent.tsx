@@ -36,7 +36,8 @@ import { Play, Code } from "lucide-react";
 Blockly.setLocale(locale);
 
 function BlocklyComponent(props) {
-  const [code, setCode] = React.useState();
+  const [code, setCode] = React.useState(null);
+  const [input, setInput] = React.useState("");
 
   const blocklyDiv = useRef();
   const toolbox = useRef();
@@ -95,10 +96,20 @@ function BlocklyComponent(props) {
           コードを実行
         </button>
         <button onClick={() => addBlock("test_react_field")}>Add Block</button>
+        <input
+          type="text"
+          value={input}
+          className="border"
+          placeholder="やりたいことを入力しよう"
+          onChange={(event) => setInput(event.target.value)}
+        />
+        <button>AIにブロック配置を手伝ってもらう</button>
       </div>
-      <SyntaxHighlighter language="javascript" style={docco}>
-        {code}
-      </SyntaxHighlighter>
+      {code && (
+        <SyntaxHighlighter language="javascript" style={docco}>
+          {code}
+        </SyntaxHighlighter>
+      )}
       <div className="flex">
         <div ref={blocklyDiv} id="blocklyDiv" />
         <div style={{ display: "none" }} ref={toolbox}>
