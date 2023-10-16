@@ -47,7 +47,36 @@ function BlocklyComponent(props) {
     let blocksXml = blockTypes.reduce((acc, blockType) => {
       return `<block type="${blockType}"><next>${acc}</next></block>`;
     }, "");
-    const xmlText = `<xml xmlns="http://www.w3.org/1999/xhtml">${blocksXml}</xml>`;
+    const xmlText = `<xml xmlns="http://www.w3.org/1999/xhtml">
+  <block type="controls_if" x="10" y="10">
+    <mutation else="0"></mutation>
+    <value name="IF0">
+      <block type="logic_compare">
+        <field name="OP">GTE</field>
+        <value name="A">
+          <block type="math_number">
+            <field name="NUM">5</field>
+          </block>
+        </value>
+        <value name="B">
+          <block type="math_number">
+            <field name="NUM">3</field>
+          </block>
+        </value>
+      </block>
+    </value>
+    <statement name="DO0">
+      <block type="text_print">
+        <value name="TEXT">
+          <shadow type="text">
+            <field name="TEXT">5</field>
+          </shadow>
+        </value>
+      </block>
+    </statement>
+  </block>
+</xml>
+`;
     const xml = stringToXml(xmlText);
     Blockly.Xml.domToWorkspace(xml, primaryWorkspace.current);
   };
