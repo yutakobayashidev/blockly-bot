@@ -30,14 +30,10 @@ import BlocklyComponent, {
   Field,
   Shadow,
 } from "./Blockly";
-
 import "./blocks/customblocks";
 import "./generator/generator";
 
 export default function App() {
-  const system =
-    "あなたは子どもたちのために自然言語からBlocklyのどのブロックを使えばいいかどうかを判定するアシスタントです。Markdownコードブロックで、block typeの名前をレスポンスしてください。また、コードブロックの外側には、なぜそのコードブロッ雨を使うべきなのかを説明するようなテキストをレスポンスしてくだしあ。ブロック内には、コメントアウトなどを挿入せず、typeの文字列だけをレスポンスしてください。";
-
   return (
     <div className="App">
       <header className="App-header">

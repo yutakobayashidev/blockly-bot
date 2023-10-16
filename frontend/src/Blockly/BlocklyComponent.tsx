@@ -43,42 +43,21 @@ function BlocklyComponent(props) {
   const toolbox = useRef();
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
-  const addConnectedBlocks = (blockTypes) => {
-    let blocksXml = blockTypes.reduce((acc, blockType) => {
-      return `<block type="${blockType}"><next>${acc}</next></block>`;
-    }, "");
-    const xmlText = `<xml xmlns="http://www.w3.org/1999/xhtml">
-  <block type="controls_if" x="10" y="10">
-    <mutation else="0"></mutation>
-    <value name="IF0">
-      <block type="logic_compare">
-        <field name="OP">GTE</field>
-        <value name="A">
-          <block type="math_number">
-            <field name="NUM">5</field>
-          </block>
-        </value>
-        <value name="B">
-          <block type="math_number">
-            <field name="NUM">3</field>
-          </block>
-        </value>
-      </block>
-    </value>
-    <statement name="DO0">
-      <block type="text_print">
-        <value name="TEXT">
-          <shadow type="text">
-            <field name="TEXT">5</field>
-          </shadow>
-        </value>
-      </block>
-    </statement>
-  </block>
-</xml>
-`;
-    const xml = stringToXml(xmlText);
-    Blockly.Xml.domToWorkspace(xml, primaryWorkspace.current);
+  const handleAIBlockPlacement = async () => {
+    const response = await fetch("http://127.0.0.1:8787/build-block", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt: input }),
+    });
+
+    const json = await response.json();
+
+    Blockly.Xml.domToWorkspace(
+      stringToXml(json.code),
+      primaryWorkspace.current
+    );
   };
 
   function stringToXml(str) {
@@ -127,19 +106,19 @@ function BlocklyComponent(props) {
           <Play />
           コードを実行
         </button>
-        <button
-          onClick={() => addConnectedBlocks(["text_print", "controls_if"])}
-        >
-          Add Block
-        </button>
         <input
           type="text"
           value={input}
-          className="border"
+          className="border w-80 px-4 py-2"
           placeholder="やりたいことを入力しよう"
           onChange={(event) => setInput(event.target.value)}
         />
-        <button>AIにブロック配置を手伝ってもらう</button>
+        <button
+          className="bg-blue-500 text-white px-4 py-2"
+          onClick={() => handleAIBlockPlacement()}
+        >
+          AIでブロックを作る
+        </button>
       </div>
       {code && (
         <SyntaxHighlighter language="javascript" style={docco}>
