@@ -1,8 +1,6 @@
-# blockly-gpt [![Built on Blockly](https://tinyurl.com/built-on-blockly)](https://github.com/google/blockly)
+# frontend
 
-Blockly のブロックを GPT で作ってみるテスト。
-
-## Running the sample
+## Running
 
 ### Installation
 
