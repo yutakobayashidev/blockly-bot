@@ -43,8 +43,11 @@ function BlocklyComponent(props) {
   const toolbox = useRef();
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
-  const addBlock = (blockType) => {
-    const xmlText = `<xml xmlns="http://www.w3.org/1999/xhtml"><block type="${blockType}" /></xml>`;
+  const addConnectedBlocks = (blockTypes) => {
+    let blocksXml = blockTypes.reduce((acc, blockType) => {
+      return `<block type="${blockType}"><next>${acc}</next></block>`;
+    }, "");
+    const xmlText = `<xml xmlns="http://www.w3.org/1999/xhtml">${blocksXml}</xml>`;
     const xml = stringToXml(xmlText);
     Blockly.Xml.domToWorkspace(xml, primaryWorkspace.current);
   };
@@ -95,7 +98,11 @@ function BlocklyComponent(props) {
           <Play />
           コードを実行
         </button>
-        <button onClick={() => addBlock("test_react_field")}>Add Block</button>
+        <button
+          onClick={() => addConnectedBlocks(["text_print", "controls_if"])}
+        >
+          Add Block
+        </button>
         <input
           type="text"
           value={input}
