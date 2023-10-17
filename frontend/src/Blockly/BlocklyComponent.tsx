@@ -84,6 +84,64 @@ function BlocklyComponent(props) {
         primaryWorkspace.current
       );
     }
+
+    const aiCorrectionItem = {
+      displayText: "AIで修正する",
+      preconditionFn: function (scope) {
+        return "enabled";
+      },
+      callback: async function (scope) {
+        const selectedBlock = scope.block;
+        if (selectedBlock) {
+          const blockPosition = selectedBlock.getRelativeToSurfaceXY();
+
+          const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
+          const xmlText = new XMLSerializer().serializeToString(xmlDom);
+
+          const userInput = prompt("変更を加えたい内容を入力してください");
+          if (userInput === null || userInput.trim() === "") {
+            return;
+          }
+
+          const response = await fetch("http://127.0.0.1:8787/build-block", {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              prompt: userInput + "\n子供が入力したXML\n\n" + xmlText,
+            }),
+          });
+
+          const json = await response.json();
+
+          const oldBlocks = primaryWorkspace.current.getAllBlocks();
+
+          Blockly.Xml.domToWorkspace(
+            stringToXml(json.code),
+            primaryWorkspace.current
+          );
+
+          const allBlocks = primaryWorkspace.current.getAllBlocks();
+          const newBlocks = allBlocks.filter(
+            (block) => !oldBlocks.includes(block)
+          );
+
+          selectedBlock.dispose();
+
+          if (newBlocks.length > 0) {
+            newBlocks[0].moveBy(blockPosition.x, blockPosition.y);
+          }
+        } else {
+          console.log("No block selected.");
+        }
+      },
+      scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+      id: "ai_correction",
+      weight: 1,
+    };
+
+    Blockly.ContextMenuRegistry.registry.register(aiCorrectionItem);
   }, [primaryWorkspace, toolbox, blocklyDiv, props]);
 
   return (
