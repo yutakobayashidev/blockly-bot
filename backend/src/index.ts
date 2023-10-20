@@ -71,7 +71,7 @@ const SYSTEM_PATH_PROMPT = `あなたは、子どもたちのために、受け�
 user: "実行の中に、forループで5回プリントしたい！\n子供が入力したXML\n\n<block xmlns=\"https://developers.google.com/blockly/xml\" type=\"controls_ifelse\" id=\"D#nk9m54@pme_(uQY9Cj\"/>"
 assistant:
 
-assistant: \`\`\`xml
+\`\`\`xml
 <xml xmlns="https://developers.google.com/blockly/xml">
   <block type="controls_ifelse" id="D#nk9m54@pme_(uQY9Cj">
     <value name="IF0">
