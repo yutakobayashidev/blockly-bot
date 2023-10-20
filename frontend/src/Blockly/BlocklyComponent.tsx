@@ -32,12 +32,38 @@ import "blockly/blocks";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { Play, Code } from "lucide-react";
+import { pythonGenerator } from "blockly/python";
+import { phpGenerator } from "blockly/php";
 
 Blockly.setLocale(locale);
 
 function BlocklyComponent(props) {
   const [code, setCode] = React.useState(null);
   const [input, setInput] = React.useState("");
+  const [language, setLanguage] = React.useState("javascript");
+
+  const generateCode = () => {
+    let generatedCode;
+    switch (language) {
+      case "javascript":
+        generatedCode = javascriptGenerator.workspaceToCode(
+          primaryWorkspace.current
+        );
+        break;
+      case "python":
+        generatedCode = pythonGenerator.workspaceToCode(
+          primaryWorkspace.current
+        );
+        break;
+      case "php":
+        generatedCode = phpGenerator.workspaceToCode(primaryWorkspace.current);
+        break;
+      default:
+        generatedCode = "";
+        break;
+    }
+    setCode(generatedCode);
+  };
 
   const blocklyDiv = useRef();
   const toolbox = useRef();
@@ -66,11 +92,6 @@ function BlocklyComponent(props) {
     return doc.documentElement; // This should return an Element type
   }
 
-  const generateCode = () => {
-    var code = javascriptGenerator.workspaceToCode(primaryWorkspace.current);
-    setCode(code);
-  };
-
   useEffect(() => {
     const { initialXml, children, ...rest } = props;
     primaryWorkspace.current = Blockly.inject(blocklyDiv.current, {
@@ -86,7 +107,7 @@ function BlocklyComponent(props) {
     }
 
     const aiCorrectionItem = {
-      displayText: "AIで修正する",
+      displayText: "AIで変更を加える",
       preconditionFn: function (scope) {
         return "enabled";
       },
@@ -138,58 +159,95 @@ function BlocklyComponent(props) {
       },
       scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
       id: "ai_correction",
-      weight: 1,
+      weight: 0,
     };
 
     Blockly.ContextMenuRegistry.registry.register(aiCorrectionItem);
+    return () => {
+      Blockly.ContextMenuRegistry.registry.unregister("ai_correction");
+    };
   }, [primaryWorkspace, toolbox, blocklyDiv, props]);
 
   return (
-    <React.Fragment>
-      <div className="flex items-center gap-x-3">
-        <button
-          className="px-3 py-2 flex items-center bg-blue-400 text-white"
-          onClick={generateCode}
-        >
-          <Code />
-          コードに変換
-        </button>
-        <button
-          onClick={() => {
-            // eslint-disable-next-line no-eval
-            eval(code);
-          }}
-          className="px-3 py-2 flex items-center bg-red-400 text-white"
-        >
-          <Play />
-          コードを実行
-        </button>
-        <input
-          type="text"
-          value={input}
-          className="border w-80 px-4 py-2"
-          placeholder="やりたいことを入力しよう"
-          onChange={(event) => setInput(event.target.value)}
-        />
-        <button
-          className="bg-blue-500 text-white px-4 py-2"
-          onClick={() => handleAIBlockPlacement()}
-        >
-          AIでブロックを作る
-        </button>
-      </div>
-      {code && (
-        <SyntaxHighlighter language="javascript" style={docco}>
-          {code}
-        </SyntaxHighlighter>
-      )}
-      <div className="flex">
-        <div ref={blocklyDiv} id="blocklyDiv" />
+    <div
+      style={{
+        display: "flex",
+        overflow: "hidden",
+        height: "100vh",
+        width: "100vw",
+        background: "rgb(228, 228, 228)",
+      }}
+    >
+      <div style={{ flex: "2.8 1 0px", overflow: "hidden" }}>
+        <div ref={blocklyDiv} className="h-full w-full max-h-full relative" />
         <div style={{ display: "none" }} ref={toolbox}>
           {props.children}
         </div>
       </div>
-    </React.Fragment>
+      <div
+        className="flex py-4 flex-col justify-between h-full px-3"
+        style={{ flex: "1.2 1 0px", overflow: "hidden", userSelect: "text" }}
+      >
+        <div className="flex gap-2 items-center">
+          <button
+            className="px-3 py-2 flex items-center bg-blue-400 text-white"
+            onClick={generateCode}
+          >
+            <Code />
+            コードに変換
+          </button>
+          <button
+            onClick={() => {
+              const jsCode = javascriptGenerator.workspaceToCode(
+                primaryWorkspace.current
+              );
+              // eslint-disable-next-line no-eval
+              eval(jsCode);
+            }}
+            className="px-3 py-2 flex items-center bg-red-400 text-white"
+          >
+            <Play />
+            コードを実行
+          </button>
+        </div>
+        <div>
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={() => setLanguage("javascript")}
+              className="px-3 py-2"
+            >
+              JavaScript
+            </button>
+            <button onClick={() => setLanguage("python")} className="px-3 py-2">
+              Python
+            </button>
+            <button onClick={() => setLanguage("php")} className="px-3 py-2">
+              PHP
+            </button>
+          </div>
+          {code && (
+            <SyntaxHighlighter language={language} style={docco}>
+              {code}
+            </SyntaxHighlighter>
+          )}
+        </div>
+        <div className="flex items-center">
+          <input
+            type="text"
+            value={input}
+            className="border flex-grow mr-3 px-4 py-2 placeholder-gray-500"
+            placeholder="for文を三回して、Hello World!を5回表示したい"
+            onChange={(event) => setInput(event.target.value)}
+          />
+          <button
+            className="text-white px-4 py-2 bg-orange-400 font-bold"
+            onClick={() => handleAIBlockPlacement()}
+          >
+            作る
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
