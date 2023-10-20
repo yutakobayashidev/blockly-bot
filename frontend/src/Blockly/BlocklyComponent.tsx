@@ -22,9 +22,7 @@
  */
 
 import React from "react";
-import "./BlocklyComponent.css";
 import { useEffect, useRef } from "react";
-
 import Blockly from "blockly/core";
 import { javascriptGenerator } from "blockly/javascript";
 import locale from "blockly/msg/ja";
@@ -34,6 +32,7 @@ import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { Play, Code } from "lucide-react";
 import { pythonGenerator } from "blockly/python";
 import { phpGenerator } from "blockly/php";
+import clsx from "clsx";
 
 Blockly.setLocale(locale);
 
@@ -188,48 +187,67 @@ function BlocklyComponent(props) {
         className="flex py-4 flex-col justify-between h-full px-3"
         style={{ flex: "1.2 1 0px", overflow: "hidden", userSelect: "text" }}
       >
-        <div className="flex gap-2 items-center">
-          <button
-            className="px-3 py-2 flex items-center bg-blue-400 text-white"
-            onClick={generateCode}
-          >
-            <Code />
-            コードに変換
-          </button>
-          <button
-            onClick={() => {
-              const jsCode = javascriptGenerator.workspaceToCode(
-                primaryWorkspace.current
-              );
-              // eslint-disable-next-line no-eval
-              eval(jsCode);
-            }}
-            className="px-3 py-2 flex items-center bg-red-400 text-white"
-          >
-            <Play />
-            コードを実行
-          </button>
-        </div>
         <div>
-          <div className="flex gap-2 items-center">
+          <div className="flex mb-2 gap-2 items-center w-full">
             <button
-              onClick={() => setLanguage("javascript")}
-              className="px-3 py-2"
+              className="px-3 py-2 flex font-bold items-center bg-blue-400 text-white flex-grow"
+              onClick={generateCode}
             >
-              JavaScript
+              <Code className="mr-2" />
+              コードに変換
             </button>
-            <button onClick={() => setLanguage("python")} className="px-3 py-2">
-              Python
-            </button>
-            <button onClick={() => setLanguage("php")} className="px-3 py-2">
-              PHP
+            <button
+              onClick={() => {
+                const jsCode = javascriptGenerator.workspaceToCode(
+                  primaryWorkspace.current
+                );
+                // eslint-disable-next-line no-eval
+                eval(jsCode);
+              }}
+              className="px-3 py-2 flex items-center bg-red-400 font-bold text-white flex-grow"
+            >
+              <Play className="mr-2" />
+              コードを実行
             </button>
           </div>
-          {code && (
-            <SyntaxHighlighter language={language} style={docco}>
-              {code}
-            </SyntaxHighlighter>
-          )}
+          <div>
+            <span className="font-bold mb-2 block">コード：</span>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={() => setLanguage("javascript")}
+                className={clsx("px-3 py-2", {
+                  "bg-white text-black": language === "javascript",
+                })}
+              >
+                🌐 JavaScript
+              </button>
+              <button
+                onClick={() => setLanguage("python")}
+                className={clsx("px-3 py-2", {
+                  "bg-white text-black": language === "python",
+                })}
+              >
+                🐍 Python
+              </button>
+              <button
+                onClick={() => setLanguage("php")}
+                className={clsx("px-3 py-2", {
+                  "bg-white text-black": language === "php",
+                })}
+              >
+                🐘 PHP
+              </button>
+            </div>
+            {code && (
+              <SyntaxHighlighter
+                className="mt-3"
+                language={language}
+                style={docco}
+              >
+                {code}
+              </SyntaxHighlighter>
+            )}
+          </div>
         </div>
         <div className="flex items-center">
           <input
