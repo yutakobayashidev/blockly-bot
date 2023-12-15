@@ -32,14 +32,55 @@ import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { Play, Code } from "lucide-react";
 import { pythonGenerator } from "blockly/python";
 import { phpGenerator } from "blockly/php";
-import clsx from "clsx";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 Blockly.setLocale(locale);
+
+const blockly_xml = `
+<xml xmlns="http://www.w3.org/1999/xhtml">
+<block type="controls_ifelse" x="0" y="0"></block>
+</xml>
+      `;
 
 function BlocklyComponent(props) {
   const [code, setCode] = React.useState(null);
   const [input, setInput] = React.useState("");
   const [language, setLanguage] = React.useState("javascript");
+
+  const svgRef = useRef<HTMLDivElement>(null);
+  const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+
+  const renderXmlAsSvg = (xmlText: string) => {
+    if (!hiddenWorkspaceRef.current) {
+      hiddenWorkspaceRef.current = Blockly.inject(
+        document.createElement("div"),
+        {
+          readOnly: true,
+        }
+      );
+    }
+
+    const workspaceSvg = hiddenWorkspaceRef.current;
+    Blockly.Xml.domToWorkspace(
+      Blockly.utils.xml.textToDom(xmlText),
+      workspaceSvg
+    );
+
+    const svgElement = workspaceSvg.getParentSvg();
+
+    if (svgElement && svgRef.current) {
+      svgRef.current.innerHTML = svgElement.outerHTML;
+    }
+
+    // Cleanup: Clear the workspace for next render
+    workspaceSvg.clear();
+  };
+
+  useEffect(() => {
+    renderXmlAsSvg(blockly_xml);
+  }, []);
 
   const generateCode = () => {
     let generatedCode;
@@ -69,7 +110,7 @@ function BlocklyComponent(props) {
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleAIBlockPlacement = async () => {
-    const response = await fetch("http://127.0.0.1:8787/build-block", {
+    const response = await fetch("http://localhost:53770/build-block", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -80,23 +121,18 @@ function BlocklyComponent(props) {
     const json = await response.json();
 
     Blockly.Xml.domToWorkspace(
-      stringToXml(json.code),
+      Blockly.utils.xml.textToDom(json.code),
       primaryWorkspace.current
     );
   };
-
-  function stringToXml(str) {
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(str, "application/xml");
-    return doc.documentElement; // This should return an Element type
-  }
-
   useEffect(() => {
     const { initialXml, children, ...rest } = props;
     primaryWorkspace.current = Blockly.inject(blocklyDiv.current, {
       toolbox: toolbox.current,
       ...rest,
     });
+
+    primaryWorkspace.current.getParentSvg();
 
     if (initialXml) {
       Blockly.Xml.domToWorkspace(
@@ -138,7 +174,7 @@ function BlocklyComponent(props) {
           const oldBlocks = primaryWorkspace.current.getAllBlocks();
 
           Blockly.Xml.domToWorkspace(
-            stringToXml(json.code),
+            Blockly.utils.xml.textToDom(json.code),
             primaryWorkspace.current
           );
 
@@ -188,15 +224,13 @@ function BlocklyComponent(props) {
         style={{ flex: "1.2 1 0px", overflow: "hidden", userSelect: "text" }}
       >
         <div>
-          <div className="flex mb-2 gap-2 items-center w-full">
-            <button
-              className="px-3 py-2 flex font-bold items-center bg-blue-400 text-white flex-grow"
-              onClick={generateCode}
-            >
-              <Code className="mr-2" />
+          <div className="flex mb-5 gap-2 items-center w-full">
+            <Button className="w-full" onClick={generateCode}>
+              <Code className="mr-1.5 h-5 w-5" />
               コードに変換
-            </button>
-            <button
+            </Button>
+            <Button
+              className="w-full"
               onClick={() => {
                 const jsCode = javascriptGenerator.workspaceToCode(
                   primaryWorkspace.current
@@ -204,40 +238,26 @@ function BlocklyComponent(props) {
                 // eslint-disable-next-line no-eval
                 eval(jsCode);
               }}
-              className="px-3 py-2 flex items-center bg-red-400 font-bold text-white flex-grow"
+              variant="destructive"
             >
-              <Play className="mr-2" />
+              <Play className="mr-1.5 h-5 w-5" />
               コードを実行
-            </button>
+            </Button>
           </div>
           <div>
             <span className="font-bold mb-2 block">コード：</span>
-            <div className="flex gap-2 items-center">
-              <button
-                onClick={() => setLanguage("javascript")}
-                className={clsx("px-3 py-2", {
-                  "bg-white text-black": language === "javascript",
-                })}
-              >
-                🌐 JavaScript
-              </button>
-              <button
-                onClick={() => setLanguage("python")}
-                className={clsx("px-3 py-2", {
-                  "bg-white text-black": language === "python",
-                })}
-              >
-                🐍 Python
-              </button>
-              <button
-                onClick={() => setLanguage("php")}
-                className={clsx("px-3 py-2", {
-                  "bg-white text-black": language === "php",
-                })}
-              >
-                🐘 PHP
-              </button>
-            </div>
+            <Tabs
+              defaultValue="javascript"
+              onValueChange={(value) => setLanguage(value)}
+              value={language}
+              className="w-[400px]"
+            >
+              <TabsList>
+                <TabsTrigger value="javascript">🌐 JavaScript</TabsTrigger>
+                <TabsTrigger value="python">🐍 Python</TabsTrigger>
+                <TabsTrigger value="php">🐘 PHP</TabsTrigger>
+              </TabsList>
+            </Tabs>
             {code && (
               <SyntaxHighlighter
                 className="mt-3"
@@ -249,20 +269,19 @@ function BlocklyComponent(props) {
             )}
           </div>
         </div>
+        <div
+          ref={svgRef}
+          className="injectionDiv mt-5 geras-renderer classic-theme"
+        />
         <div className="flex items-center">
-          <input
+          <Input
             type="text"
             value={input}
-            className="border flex-grow mr-3 px-4 py-2 placeholder-gray-500"
+            className="flex-grow mr-3"
             placeholder="for文を三回して、Hello World!を5回表示したい"
             onChange={(event) => setInput(event.target.value)}
           />
-          <button
-            className="text-white px-4 py-2 bg-orange-400 font-bold"
-            onClick={() => handleAIBlockPlacement()}
-          >
-            作る
-          </button>
+          <Button onClick={() => handleAIBlockPlacement()}>作る</Button>
         </div>
       </div>
     </div>
