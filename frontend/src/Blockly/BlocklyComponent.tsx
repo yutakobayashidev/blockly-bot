@@ -35,6 +35,7 @@ import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ReactNode } from "react";
 
 Blockly.setLocale(locale);
 
@@ -44,7 +45,20 @@ const blockly_xml = `
 </xml>
       `;
 
-function BlocklyComponent(props) {
+interface BlocklyComponentProps {
+  initialXml?: string;
+  children?: ReactNode;
+  readOnly?: boolean;
+  trashcan?: boolean;
+  media?: string;
+  move?: {
+    scrollbars?: boolean;
+    drag?: boolean;
+    wheel?: boolean;
+  };
+}
+
+function BlocklyComponent(props: BlocklyComponentProps) {
   const [code, setCode] = React.useState(null);
   const [input, setInput] = React.useState("");
   const [language, setLanguage] = React.useState("javascript");
@@ -105,8 +119,8 @@ function BlocklyComponent(props) {
     setCode(generatedCode);
   };
 
-  const blocklyDiv = useRef();
-  const toolbox = useRef();
+  const blocklyDiv = useRef<HTMLDivElement>(null);
+  const toolbox = useRef<HTMLDivElement>(null);
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleAIBlockPlacement = async () => {
@@ -119,89 +133,93 @@ function BlocklyComponent(props) {
     });
 
     const json = await response.json();
-
-    Blockly.Xml.domToWorkspace(
-      Blockly.utils.xml.textToDom(json.code),
-      primaryWorkspace.current
-    );
-  };
-  useEffect(() => {
-    const { initialXml, children, ...rest } = props;
-    primaryWorkspace.current = Blockly.inject(blocklyDiv.current, {
-      toolbox: toolbox.current,
-      ...rest,
-    });
-
-    primaryWorkspace.current.getParentSvg();
-
-    if (initialXml) {
+    if (primaryWorkspace.current) {
       Blockly.Xml.domToWorkspace(
-        Blockly.utils.xml.textToDom(initialXml),
+        Blockly.utils.xml.textToDom(json.code),
         primaryWorkspace.current
       );
     }
+  };
 
-    const aiCorrectionItem = {
-      displayText: "AIで変更を加える",
-      preconditionFn: function (scope) {
-        return "enabled";
-      },
-      callback: async function (scope) {
-        const selectedBlock = scope.block;
-        if (selectedBlock) {
-          const blockPosition = selectedBlock.getRelativeToSurfaceXY();
+  useEffect(() => {
+    const { initialXml, children, ...rest } = props;
 
-          const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
-          const xmlText = new XMLSerializer().serializeToString(xmlDom);
+    // Check if blocklyDiv.current and toolbox.current are not null
+    if (blocklyDiv.current && toolbox.current) {
+      primaryWorkspace.current = Blockly.inject(blocklyDiv.current, {
+        toolbox: toolbox.current,
+        ...rest,
+      });
 
-          const userInput = prompt("変更を加えたい内容を入力してください");
-          if (userInput === null || userInput.trim() === "") {
-            return;
+      if (initialXml) {
+        Blockly.Xml.domToWorkspace(
+          Blockly.utils.xml.textToDom(initialXml),
+          primaryWorkspace.current
+        );
+      }
+
+      const aiCorrectionItem = {
+        displayText: "AIで変更を加える",
+        preconditionFn: function () {
+          return "enabled";
+        },
+        callback: async function (scope: any) {
+          const selectedBlock = scope.block;
+          if (selectedBlock && primaryWorkspace.current) {
+            const blockPosition = selectedBlock.getRelativeToSurfaceXY();
+            const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
+            const xmlText = new XMLSerializer().serializeToString(xmlDom);
+            const userInput = prompt("変更を加えたい内容を入力してください");
+
+            if (userInput === null || userInput.trim() === "") {
+              return;
+            }
+
+            const response = await fetch("http://127.0.0.1:8787/build-block", {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                prompt: userInput + "\n子どもが入力したXML\n\n" + xmlText,
+              }),
+            });
+
+            const json = await response.json();
+            const oldBlocks = primaryWorkspace.current.getAllBlocks();
+            Blockly.Xml.domToWorkspace(
+              Blockly.utils.xml.textToDom(json.code),
+              primaryWorkspace.current
+            );
+
+            const allBlocks = primaryWorkspace.current.getAllBlocks();
+            const newBlocks = allBlocks.filter(
+              (block) => !oldBlocks.includes(block)
+            );
+
+            selectedBlock.dispose();
+            if (newBlocks.length > 0) {
+              newBlocks[0].moveBy(blockPosition.x, blockPosition.y);
+            }
+          } else {
+            console.log(
+              "No block selected or primary workspace is not initialized."
+            );
           }
+        },
+        scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+        id: "ai_correction",
+        weight: 0,
+      };
 
-          const response = await fetch("http://127.0.0.1:8787/build-block", {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              prompt: userInput + "\n子供が入力したXML\n\n" + xmlText,
-            }),
-          });
+      Blockly.ContextMenuRegistry.registry.register(aiCorrectionItem);
+    }
 
-          const json = await response.json();
-
-          const oldBlocks = primaryWorkspace.current.getAllBlocks();
-
-          Blockly.Xml.domToWorkspace(
-            Blockly.utils.xml.textToDom(json.code),
-            primaryWorkspace.current
-          );
-
-          const allBlocks = primaryWorkspace.current.getAllBlocks();
-          const newBlocks = allBlocks.filter(
-            (block) => !oldBlocks.includes(block)
-          );
-
-          selectedBlock.dispose();
-
-          if (newBlocks.length > 0) {
-            newBlocks[0].moveBy(blockPosition.x, blockPosition.y);
-          }
-        } else {
-          console.log("No block selected.");
-        }
-      },
-      scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
-      id: "ai_correction",
-      weight: 0,
-    };
-
-    Blockly.ContextMenuRegistry.registry.register(aiCorrectionItem);
+    // Cleanup function
     return () => {
       Blockly.ContextMenuRegistry.registry.unregister("ai_correction");
     };
-  }, [primaryWorkspace, toolbox, blocklyDiv, props]);
+  }, [primaryWorkspace, toolbox, blocklyDiv, props]); // Dependencies array
 
   return (
     <div

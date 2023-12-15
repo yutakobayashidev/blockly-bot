@@ -39,7 +39,7 @@ class BlocklyReactField extends Blockly.Field {
 
   private div_: HTMLDivElement | null = null; // Initialize it to null
 
-  static fromJson(options) {
+  static fromJson(options: any) {
     // `this` might be a subclass of BlocklyReactField if that class doesn't
     // override the static fromJson method.
     return new this(options["text"]);
@@ -50,9 +50,12 @@ class BlocklyReactField extends Blockly.Field {
 
     ReactDOM.render(this.render(), this.div_);
 
-    var border = (this.sourceBlock_.style as any).colourTertiary; // Use 'as any' to bypass type checks
+    var border = (this.sourceBlock_?.style as any).colourTertiary; // Use 'as any' to bypass type checks
     border = border.colourBorder || border.colourLight;
-    Blockly.DropDownDiv.setColour(this.sourceBlock_.getColour(), border);
+    Blockly.DropDownDiv.setColour(
+      this.sourceBlock_?.getColour() as string,
+      border
+    );
 
     Blockly.DropDownDiv.showPositionedByField(
       this,
@@ -61,7 +64,7 @@ class BlocklyReactField extends Blockly.Field {
   }
 
   dropdownDispose_() {
-    ReactDOM.unmountComponentAtNode(this.div_);
+    ReactDOM.unmountComponentAtNode(this.div_ as HTMLDivElement);
   }
 
   render() {

@@ -21,7 +21,6 @@
  * @author samelh@google.com (Sam El-Husseini)
  */
 
-import React from "react";
 import BlocklyComponent, {
   Block,
   Category,
