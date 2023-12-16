@@ -36,6 +36,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ReactNode } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogDescription,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 Blockly.setLocale(locale);
 
@@ -62,6 +71,11 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [code, setCode] = React.useState(null);
   const [input, setInput] = React.useState("");
   const [language, setLanguage] = React.useState("javascript");
+  const [chengeprompt, setChengeprompt] = React.useState("");
+  const [selectedBlock, setSelectedBlock] =
+    React.useState<Blockly.Block | null>(null);
+
+  const [open, setOpen] = React.useState(false);
 
   const svgRef = useRef<HTMLDivElement>(null);
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -165,42 +179,9 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         },
         callback: async function (scope: any) {
           const selectedBlock = scope.block;
-          if (selectedBlock && primaryWorkspace.current) {
-            const blockPosition = selectedBlock.getRelativeToSurfaceXY();
-            const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
-            const xmlText = new XMLSerializer().serializeToString(xmlDom);
-            const userInput = prompt("変更を加えたい内容を入力してください");
-
-            if (userInput === null || userInput.trim() === "") {
-              return;
-            }
-
-            const response = await fetch("http://127.0.0.1:8787/build-block", {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                prompt: userInput + "\n子どもが入力したXML\n\n" + xmlText,
-              }),
-            });
-
-            const json = await response.json();
-            const oldBlocks = primaryWorkspace.current.getAllBlocks();
-            Blockly.Xml.domToWorkspace(
-              Blockly.utils.xml.textToDom(json.code),
-              primaryWorkspace.current
-            );
-
-            const allBlocks = primaryWorkspace.current.getAllBlocks();
-            const newBlocks = allBlocks.filter(
-              (block) => !oldBlocks.includes(block)
-            );
-
-            selectedBlock.dispose();
-            if (newBlocks.length > 0) {
-              newBlocks[0].moveBy(blockPosition.x, blockPosition.y);
-            }
+          if (selectedBlock) {
+            setSelectedBlock(selectedBlock);
+            setOpen(true);
           } else {
             console.log(
               "No block selected or primary workspace is not initialized."
@@ -221,88 +202,158 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     };
   }, [primaryWorkspace, toolbox, blocklyDiv, props]); // Dependencies array
 
+  const handleDialogSubmit = async () => {
+    setOpen(false);
+
+    if (primaryWorkspace.current && selectedBlock) {
+      const blockPosition = selectedBlock.getRelativeToSurfaceXY();
+      const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
+      const xmlText = new XMLSerializer().serializeToString(xmlDom);
+
+      const response = await fetch("http://localhost:54833/build-block", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: chengeprompt + "\n子どもが入力したXML\n\n" + xmlText,
+        }),
+      });
+
+      const json = await response.json();
+
+      console.log(json);
+
+      const oldBlocks = primaryWorkspace.current.getAllBlocks();
+      Blockly.Xml.domToWorkspace(
+        Blockly.utils.xml.textToDom(json.code),
+        primaryWorkspace.current
+      );
+
+      const allBlocks = primaryWorkspace.current.getAllBlocks();
+      const newBlocks = allBlocks.filter((block) => !oldBlocks.includes(block));
+
+      // @ts-ignore
+      selectedBlock.dispose();
+      if (newBlocks.length > 0) {
+        newBlocks[0].moveBy(blockPosition.x, blockPosition.y);
+      }
+
+      setSelectedBlock(null);
+    }
+  };
+
   return (
-    <div
-      style={{
-        display: "flex",
-        overflow: "hidden",
-        height: "100vh",
-        width: "100vw",
-        background: "rgb(228, 228, 228)",
-      }}
-    >
-      <div style={{ flex: "2.8 1 0px", overflow: "hidden" }}>
-        <div ref={blocklyDiv} className="h-full w-full max-h-full relative" />
-        <div style={{ display: "none" }} ref={toolbox}>
-          {props.children}
-        </div>
-      </div>
+    <>
       <div
-        className="flex py-4 flex-col justify-between h-full px-3"
-        style={{ flex: "1.2 1 0px", overflow: "hidden", userSelect: "text" }}
+        style={{
+          display: "flex",
+          overflow: "hidden",
+          height: "100vh",
+          width: "100vw",
+          background: "rgb(228, 228, 228)",
+        }}
       >
-        <div>
-          <div className="flex mb-5 gap-2 items-center w-full">
-            <Button className="w-full" onClick={generateCode}>
-              <Code className="mr-1.5 h-5 w-5" />
-              コードに変換
-            </Button>
-            <Button
-              className="w-full"
-              onClick={() => {
-                const jsCode = javascriptGenerator.workspaceToCode(
-                  primaryWorkspace.current
-                );
-                // eslint-disable-next-line no-eval
-                eval(jsCode);
-              }}
-              variant="destructive"
-            >
-              <Play className="mr-1.5 h-5 w-5" />
-              コードを実行
-            </Button>
-          </div>
-          <div>
-            <span className="font-bold mb-2 block">コード：</span>
-            <Tabs
-              defaultValue="javascript"
-              onValueChange={(value) => setLanguage(value)}
-              value={language}
-              className="w-[400px]"
-            >
-              <TabsList>
-                <TabsTrigger value="javascript">🌐 JavaScript</TabsTrigger>
-                <TabsTrigger value="python">🐍 Python</TabsTrigger>
-                <TabsTrigger value="php">🐘 PHP</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {code && (
-              <SyntaxHighlighter
-                className="mt-3"
-                language={language}
-                style={docco}
-              >
-                {code}
-              </SyntaxHighlighter>
-            )}
+        <div style={{ flex: "2.8 1 0px", overflow: "hidden" }}>
+          <div ref={blocklyDiv} className="h-full w-full max-h-full relative" />
+          <div style={{ display: "none" }} ref={toolbox}>
+            {props.children}
           </div>
         </div>
         <div
-          ref={svgRef}
-          className="injectionDiv mt-5 geras-renderer classic-theme"
-        />
-        <div className="flex items-center">
-          <Input
-            type="text"
-            value={input}
-            className="flex-grow mr-3"
-            placeholder="for文を三回して、Hello World!を5回表示したい"
-            onChange={(event) => setInput(event.target.value)}
+          className="flex py-4 flex-col justify-between h-full px-3"
+          style={{ flex: "1.2 1 0px", overflow: "hidden", userSelect: "text" }}
+        >
+          <div>
+            <div className="flex mb-5 gap-2 items-center w-full">
+              <Button className="w-full" onClick={generateCode}>
+                <Code className="mr-1.5 h-5 w-5" />
+                コードに変換
+              </Button>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  const jsCode = javascriptGenerator.workspaceToCode(
+                    primaryWorkspace.current
+                  );
+                  // eslint-disable-next-line no-eval
+                  eval(jsCode);
+                }}
+                variant="destructive"
+              >
+                <Play className="mr-1.5 h-5 w-5" />
+                コードを実行
+              </Button>
+            </div>
+            <div>
+              <Tabs
+                defaultValue="javascript"
+                onValueChange={(value) => setLanguage(value)}
+                value={language}
+                className="w-[400px]"
+              >
+                <TabsList>
+                  <TabsTrigger value="javascript">🌐 JavaScript</TabsTrigger>
+                  <TabsTrigger value="python">🐍 Python</TabsTrigger>
+                  <TabsTrigger value="php">🐘 PHP</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              {code && (
+                <SyntaxHighlighter
+                  className="mt-3"
+                  language={language}
+                  style={docco}
+                >
+                  {code}
+                </SyntaxHighlighter>
+              )}
+            </div>
+          </div>
+          <div
+            ref={svgRef}
+            className="injectionDiv mt-5 geras-renderer classic-theme"
           />
-          <Button onClick={() => handleAIBlockPlacement()}>作る</Button>
+          <div className="flex items-center">
+            <Input
+              type="text"
+              value={input}
+              className="flex-grow mr-3"
+              placeholder="for文を三回して、Hello World!を5回表示したい"
+              onChange={(event) => setInput(event.target.value)}
+            />
+            <Button onClick={() => handleAIBlockPlacement()}>作る</Button>
+          </div>
         </div>
       </div>
-    </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader className="space-y-5">
+            <DialogTitle className="text-center text-xl">
+              AIでどのように変更を加えたいですか？
+            </DialogTitle>
+            <DialogDescription>
+              具体的になにをしたいのかを入力すると、精度が高いブロックを提案します。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-right">
+                プロンプト
+              </Label>
+              <Input
+                id="name"
+                onChange={(event) => setChengeprompt(event.target.value)}
+                placeholder="繰り返しの回数を3回にして"
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-center justify-center">
+            <Button onClick={handleDialogSubmit}>生成する</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

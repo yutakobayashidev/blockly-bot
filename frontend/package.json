@@ -5,6 +5,9 @@
   "type": "module",
   "dependencies": {
     "@blockly/field-date": "^8.0.0",
+    "@radix-ui/react-accordion": "^1.1.2",
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tabs": "^1.0.4",
     "@types/react-datepicker": "^4.19.4",
