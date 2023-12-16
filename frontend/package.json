@@ -22,6 +22,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postinstall": "cp -r node_modules/blockly/media public/media",
     "serve": "vite preview"
   },
   "eslintConfig": {
