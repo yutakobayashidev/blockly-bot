@@ -222,6 +222,12 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     };
   }, [primaryWorkspace, toolbox, blocklyDiv, props]); // Dependencies array
 
+  const get_svg = () => {
+    const json = JSON.parse(output);
+
+    renderXmlAsSvg(json.xml);
+  };
+
   const handleDialogSubmit = async () => {
     setOpen(false);
 
@@ -303,6 +309,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               >
                 <Play className="mr-1.5 h-5 w-5" />
                 コードを実行
+              </Button>
+              <Button className="w-full" onClick={get_svg}>
+                <Code className="mr-1.5 h-5 w-5" />
+                JSON
               </Button>
             </div>
             <div>
