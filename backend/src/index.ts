@@ -51,8 +51,13 @@ app.post("/build-block", async (c) => {
 
   return c.streamText(async (stream) => {
     for await (const message of chatStream) {
-      console.log(message.choices[0].delta.content);
-      await stream.write(message.choices[0]?.delta.content ?? "");
+      const text = message.choices[0]?.delta.content ?? "";
+      await Promise.all(
+        Array.from(text).map(async (s) => {
+          await stream.write(s);
+          await stream.sleep(20);
+        })
+      );
     }
   });
 });

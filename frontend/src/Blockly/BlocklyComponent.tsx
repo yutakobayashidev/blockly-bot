@@ -45,6 +45,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 Blockly.setLocale(locale);
 
@@ -74,6 +75,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [chengeprompt, setChengeprompt] = React.useState("");
   const [selectedBlock, setSelectedBlock] =
     React.useState<Blockly.Block | null>(null);
+  const [output, setOutput] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+
+  console.log(output);
 
   const [open, setOpen] = React.useState(false);
 
@@ -138,7 +143,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleAIBlockPlacement = async () => {
-    const response = await fetch("http://localhost:53770/build-block", {
+    setLoading(true);
+    const response = await fetch("http://localhost:57254/build-block", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -146,13 +152,27 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       body: JSON.stringify({ prompt: input }),
     });
 
-    const json = await response.json();
-    if (primaryWorkspace.current) {
-      Blockly.Xml.domToWorkspace(
-        Blockly.utils.xml.textToDom(json.code),
-        primaryWorkspace.current
-      );
+    if (!response.ok) {
+      throw new Error(response.statusText);
     }
+
+    const data = response.body;
+    if (!data) {
+      return;
+    }
+
+    const reader = data.getReader();
+    const decoder = new TextDecoder();
+    let done = false;
+
+    while (!done) {
+      const { value, done: doneReading } = await reader.read();
+      done = doneReading;
+      const chunkValue = decoder.decode(value);
+      setOutput((prev) => prev + chunkValue);
+    }
+
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -313,6 +333,14 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             ref={svgRef}
             className="injectionDiv mt-5 geras-renderer classic-theme"
           />
+          <Card className="mb-5">
+            <CardHeader>
+              <CardTitle>LLM Response: (Debug)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>{output}</p>
+            </CardContent>
+          </Card>
           <div className="flex items-center">
             <Input
               type="text"
@@ -321,7 +349,9 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               placeholder="for文を三回して、Hello World!を5回表示したい"
               onChange={(event) => setInput(event.target.value)}
             />
-            <Button onClick={() => handleAIBlockPlacement()}>作る</Button>
+            <Button disabled={loading} onClick={() => handleAIBlockPlacement()}>
+              {loading ? "生成中..." : "生成"}
+            </Button>
           </div>
         </div>
       </div>
