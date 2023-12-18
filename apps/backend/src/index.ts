@@ -113,7 +113,7 @@ app.post("blockly-insight", async (c) => {
         content: [
           {
             type: "text",
-            text: `このBlocklyブロックは何を行っているか説明してください。${xml}`,
+            text: `このBlocklyブロックは何を行っているか説明してください。Blockly XML: \n\n${xml}`,
           },
           {
             type: "image_url",

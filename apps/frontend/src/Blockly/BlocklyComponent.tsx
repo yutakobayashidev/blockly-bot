@@ -309,7 +309,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 },
                 body: JSON.stringify({
                   image: `data:image/png;base64,${base64Image}`,
-                  xm: xmlText,
+                  xml: xmlText,
                 }),
               }
             );
