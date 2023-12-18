@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { RegistryItem } from "blockly/core/contextmenu_registry";
 
 Blockly.setLocale(locale);
 
@@ -53,6 +54,73 @@ const blockly_xml = `
 <block type="controls_ifelse" x="0" y="0"></block>
 </xml>
       `;
+
+// see https://github.com/jollytoad/blockly/blob/jollytoad/download-block/tests/playgrounds/screenshot.js
+
+/**
+ * Convert an SVG of a block to a PNG data URI.
+ * @param {Blockly.BlockSvg} block The block.
+ * @returns {Promise<string>} A promise that resolves with the data URI.
+ */
+async function blockToPng(block: Blockly.BlockSvg): Promise<string> {
+  try {
+    // Calculate block dimensions and create an SVG element.
+    const bBox = block.getBoundingRectangle();
+    const width = bBox.right - bBox.left;
+    const height = bBox.bottom - bBox.top;
+
+    const blockCanvas = block.getSvgRoot();
+    let clone = blockCanvas.cloneNode(true) as SVGSVGElement;
+
+    console.debug(clone);
+
+    clone.removeAttribute("transform");
+    Blockly.utils.dom.removeClass(clone, "blocklySelected");
+
+    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svg.appendChild(clone);
+    console.debug(clone);
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("width", width.toString());
+    svg.setAttribute("height", height.toString());
+
+    // Include styles.
+    const css = Array.from(document.head.querySelectorAll("style")).find((el) =>
+      /\.blocklySvg/.test(el.textContent || "")
+    ) as HTMLStyleElement;
+    let style = document.createElement("style");
+    style.textContent = css.textContent || "";
+    svg.insertBefore(style, svg.firstChild);
+
+    // Serialize SVG and convert to PNG.
+    let svgAsXML = new XMLSerializer().serializeToString(svg);
+    svgAsXML = svgAsXML.replace(/&nbsp/g, "&#160");
+    const data = `data:image/svg+xml,${encodeURIComponent(svgAsXML)}`;
+
+    return new Promise<string>((resolve, reject) => {
+      let img = new Image();
+      img.onload = () => {
+        let canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        let context = canvas.getContext("2d");
+        if (context) {
+          context.drawImage(img, 0, 0, width, height);
+          const dataUri = canvas.toDataURL("image/png");
+          resolve(dataUri);
+        } else {
+          reject(new Error("Failed to get canvas context"));
+        }
+      };
+      img.onerror = reject;
+      img.src = data;
+    });
+  } catch (error) {
+    console.error("Error in blockToPng:", error);
+    throw error;
+  }
+}
 
 interface BlocklyComponentProps {
   initialXml?: string;
@@ -197,13 +265,12 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         );
       }
 
-      const aiCorrectionItem = {
+      const patch_blockly_block: RegistryItem = {
         displayText: "AIで変更を加える",
         preconditionFn: () => "enabled",
-
-        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-        callback: async (scope: any) => {
+        callback: async (scope) => {
           const selectedBlock = scope.block;
+
           if (selectedBlock) {
             setSelectedBlock(selectedBlock);
             setOpen(true);
@@ -218,12 +285,37 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         weight: 0,
       };
 
-      Blockly.ContextMenuRegistry.registry.register(aiCorrectionItem);
+      const blockly_insight: RegistryItem = {
+        displayText: "Blockly BOTに質問する",
+        preconditionFn: () => "enabled",
+        scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+        weight: 0,
+        callback: async (scope) => {
+          try {
+            if (!scope.block) return console.error("No block selected");
+
+            const dataUri = await blockToPng(scope.block);
+            const a = document.createElement("a");
+            a.download = `${scope.block.type}.png`;
+            a.href = dataUri;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } catch (error) {
+            console.error("Error saving block as PNG:", error);
+          }
+        },
+        id: "ai_insight",
+      };
+
+      Blockly.ContextMenuRegistry.registry.register(patch_blockly_block);
+      Blockly.ContextMenuRegistry.registry.register(blockly_insight);
     }
 
     // Cleanup function
     return () => {
       Blockly.ContextMenuRegistry.registry.unregister("ai_correction");
+      Blockly.ContextMenuRegistry.registry.unregister("ai_insight");
     };
   }, [primaryWorkspace, toolbox, blocklyDiv, props]); // Dependencies array
 

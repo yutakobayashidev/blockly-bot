@@ -7,7 +7,7 @@
     "enabled": true,
     "rules": {
       "all": true,
-      "style": { "useBlockStatements": "off" },
+      "style": { "useBlockStatements": "off", "useConst": "off" },
       "nursery": { "useImportRestrictions": "off" }
     }
   },

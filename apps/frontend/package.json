@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@blockly/dev-tools": "^7.1.5",
     "@blockly/field-date": "^8.0.0",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -15,6 +16,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "lucide-react": "^0.297.0",
+    "patch-package": "^8.0.0",
     "react": "^18.2.0",
     "react-datepicker": "^3.3.0",
     "react-dom": "^18.2.0",
