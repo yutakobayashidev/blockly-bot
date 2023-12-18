@@ -146,13 +146,16 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const handleAIBlockPlacement = async () => {
     setLoading(true);
-    const response = await fetch("http://localhost:57254/build-block", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ prompt: input }),
-    });
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/build-block`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: input }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(response.statusText);
@@ -238,15 +241,18 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
       const xmlText = new XMLSerializer().serializeToString(xmlDom);
 
-      const response = await fetch("http://localhost:54833/build-block", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: `${chengeprompt}\n子どもが入力したXML\n\n${xmlText}`,
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/build-block`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: `${chengeprompt}\n子どもが入力したXML\n\n${xmlText}`,
+          }),
+        }
+      );
 
       const json = await response.json();
 

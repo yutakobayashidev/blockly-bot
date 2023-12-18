@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import OpenAI from "openai";
 import { cors } from "hono/cors";
 import {
   SYSTEM_PROMPT,
