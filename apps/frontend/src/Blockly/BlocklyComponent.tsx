@@ -21,7 +21,6 @@
  * @author samelh@google.com (Sam El-Husseini)
  */
 
-import React from "react";
 import { useEffect, useRef } from "react";
 import Blockly from "blockly/core";
 import { javascriptGenerator } from "blockly/javascript";
@@ -35,7 +34,7 @@ import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -69,18 +68,19 @@ interface BlocklyComponentProps {
 }
 
 function BlocklyComponent(props: BlocklyComponentProps) {
-  const [code, setCode] = React.useState(null);
-  const [input, setInput] = React.useState("");
-  const [language, setLanguage] = React.useState("javascript");
-  const [chengeprompt, setChengeprompt] = React.useState("");
-  const [selectedBlock, setSelectedBlock] =
-    React.useState<Blockly.Block | null>(null);
-  const [output, setOutput] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
+  const [code, setCode] = useState(null);
+  const [input, setInput] = useState("");
+  const [language, setLanguage] = useState("javascript");
+  const [chengeprompt, setChengeprompt] = useState("");
+  const [selectedBlock, setSelectedBlock] = useState<Blockly.Block | null>(
+    null
+  );
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  console.log(output);
+  console.debug(output);
 
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
 
   const svgRef = useRef<HTMLDivElement>(null);
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -140,6 +140,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const toolbox = useRef<HTMLDivElement>(null);
+
+  // biome-ignore lint/style/useConst: <explanation>
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleAIBlockPlacement = async () => {
@@ -176,7 +178,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   };
 
   useEffect(() => {
-    const { initialXml, children, ...rest } = props;
+    const { initialXml, ...rest } = props;
 
     // Check if blocklyDiv.current and toolbox.current are not null
     if (blocklyDiv.current && toolbox.current) {
@@ -194,16 +196,16 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
       const aiCorrectionItem = {
         displayText: "AIで変更を加える",
-        preconditionFn: function () {
-          return "enabled";
-        },
-        callback: async function (scope: any) {
+        preconditionFn: () => "enabled",
+
+        // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        callback: async (scope: any) => {
           const selectedBlock = scope.block;
           if (selectedBlock) {
             setSelectedBlock(selectedBlock);
             setOpen(true);
           } else {
-            console.log(
+            console.info(
               "No block selected or primary workspace is not initialized."
             );
           }
@@ -242,13 +244,13 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          prompt: chengeprompt + "\n子どもが入力したXML\n\n" + xmlText,
+          prompt: `${chengeprompt}\n子どもが入力したXML\n\n${xmlText}`,
         }),
       });
 
       const json = await response.json();
 
-      console.log(json);
+      console.debug(json);
 
       const oldBlocks = primaryWorkspace.current.getAllBlocks();
       Blockly.Xml.domToWorkspace(

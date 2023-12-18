@@ -63,9 +63,7 @@ app.post("/build-block", async (c) => {
 app.patch("/build-block", async (c) => {
   const { prompt } = await c.req.json();
 
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
-
-  const chat = await openai.chat.completions.create({
+  const chat = await c.get("openai").chat.completions.create({
     messages: [
       {
         role: "system",
