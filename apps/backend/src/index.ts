@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import OpenAI from "openai";
 import { cors } from "hono/cors";
-import { SYSTEM_PROMPT, SYSTEM_PATCH_PROMPT } from "./prompts";
+import {
+  SYSTEM_PROMPT,
+  SYSTEM_PATCH_PROMPT,
+  INSIGHT_SYSTEM_PROMPT,
+} from "./prompts";
+import { HonoConfig } from "@/config";
 
-type Bindings = {
-  OPENAI_API_KEY: string;
-  SECRET: string;
-};
-
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<HonoConfig>();
 
 app.use(
   "/build-block",
@@ -29,9 +29,7 @@ app.use(
 app.post("/build-block", async (c) => {
   const { prompt } = await c.req.json();
 
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
-
-  const chatStream = await openai.chat.completions.create({
+  const chatStream = await c.get("openai").chat.completions.create({
     messages: [
       {
         role: "system",
@@ -83,20 +81,62 @@ app.patch("/build-block", async (c) => {
 
   const messageContent = chat.choices[0].message.content;
 
-  console.log(messageContent);
+  console.info(messageContent);
 
   // 正規表現を使用して、Markdownのコードブロックを抽出
   const codeRegex = /```(?:[a-zA-Z]*\n)?([\s\S]*?)```/g;
   if (messageContent) {
     const matches = codeRegex.exec(messageContent);
 
-    if (matches && matches[1]) {
+    if (matches?.[1]) {
       // 最初のコードブロックの内容を返す
       return c.json({ code: matches[1].trim() });
     }
   }
   // エラーコードを返す
   return c.json({ error: "No code block found in the response." });
+});
+
+app.post("blockly-insight", async (c) => {
+  // TODO: 画像を受け取る
+
+  const vision = await c.get("openai").chat.completions.create({
+    model: "gpt-4-vision-preview",
+    stream: true,
+    messages: [
+      {
+        role: "system",
+        content: INSIGHT_SYSTEM_PROMPT,
+      },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "このBlocklyブロックは何を行っているか説明してください。",
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: "data:image/jpeg;base64,{base64_image}",
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  return c.streamText(async (stream) => {
+    for await (const message of vision) {
+      const text = message.choices[0]?.delta.content ?? "";
+      await Promise.all(
+        Array.from(text).map(async (s) => {
+          await stream.write(s);
+          await stream.sleep(20);
+        })
+      );
+    }
+  });
 });
 
 export default app;

@@ -120,3 +120,6 @@ Text: text_charAt、text_print、text、text_length、text_print、text_prompt_e
 Math: math_number,math_arithmetic,math_single
 
 Values: math_number、text`;
+
+export const INSIGHT_SYSTEM_PROMPT =
+  "あなたは子どもたちのために、質問されたBlocklyの画像とXMLをもとに、ブロックでどのような処理が行われているかを解説するアシスタントです。分かりやすく、簡潔に、子どもたちが理解できるように説明してください";
