@@ -62,7 +62,7 @@ const blockly_xml = `
  * @param {Blockly.BlockSvg} block The block.
  * @returns {Promise<string>} A promise that resolves with the data URI.
  */
-async function blockToPng(block: Blockly.BlockSvg): Promise<string> {
+async function blockToPngBase64(block: Blockly.BlockSvg): Promise<string> {
   try {
     // Calculate block dimensions and create an SVG element.
     const bBox = block.getBoundingRectangle();
@@ -107,8 +107,10 @@ async function blockToPng(block: Blockly.BlockSvg): Promise<string> {
         let context = canvas.getContext("2d");
         if (context) {
           context.drawImage(img, 0, 0, width, height);
+          // PNGデータURIではなく、base64エンコードされたPNGを返す
           const dataUri = canvas.toDataURL("image/png");
-          resolve(dataUri);
+          const base64Data = dataUri.split(",")[1]; // データURIからbase64部分を抽出
+          resolve(base64Data);
         } else {
           reject(new Error("Failed to get canvas context"));
         }
@@ -209,7 +211,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const toolbox = useRef<HTMLDivElement>(null);
 
-  // biome-ignore lint/style/useConst: <explanation>
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleAIBlockPlacement = async () => {
@@ -294,13 +295,44 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           try {
             if (!scope.block) return console.error("No block selected");
 
-            const dataUri = await blockToPng(scope.block);
-            const a = document.createElement("a");
-            a.download = `${scope.block.type}.png`;
-            a.href = dataUri;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            const base64Image = await blockToPngBase64(scope.block);
+
+            const xmlDom = Blockly.Xml.blockToDom(scope.block);
+            const xmlText = new XMLSerializer().serializeToString(xmlDom);
+
+            const response = await fetch(
+              `${import.meta.env.VITE_API_URL}/blockly-insight`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  image: `data:image/png;base64,${base64Image}`,
+                  xm: xmlText,
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              throw new Error(response.statusText);
+            }
+
+            const data = response.body;
+            if (!data) {
+              return;
+            }
+
+            const reader = data.getReader();
+            const decoder = new TextDecoder();
+            let done = false;
+
+            while (!done) {
+              const { value, done: doneReading } = await reader.read();
+              done = doneReading;
+              const chunkValue = decoder.decode(value);
+              setOutput((prev) => prev + chunkValue);
+            }
           } catch (error) {
             console.error("Error saving block as PNG:", error);
           }

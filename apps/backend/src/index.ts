@@ -6,11 +6,13 @@ import {
   INSIGHT_SYSTEM_PROMPT,
 } from "./prompts";
 import { HonoConfig } from "@/config";
+import { inject } from "./middleware/inject";
 
 const app = new Hono<HonoConfig>();
 
 app.use(
-  "/build-block",
+  "*",
+  inject,
   cors({
     origin: ["http://localhost:5173"],
     allowHeaders: [
@@ -95,11 +97,12 @@ app.patch("/build-block", async (c) => {
 });
 
 app.post("blockly-insight", async (c) => {
-  // TODO: 画像を受け取る
+  const { image, xml } = await c.req.json();
 
-  const vision = await c.get("openai").chat.completions.create({
+  const chatStream = await c.get("openai").chat.completions.create({
     model: "gpt-4-vision-preview",
     stream: true,
+    max_tokens: 1000,
     messages: [
       {
         role: "system",
@@ -110,12 +113,12 @@ app.post("blockly-insight", async (c) => {
         content: [
           {
             type: "text",
-            text: "このBlocklyブロックは何を行っているか説明してください。",
+            text: `このBlocklyブロックは何を行っているか説明してください。${xml}`,
           },
           {
             type: "image_url",
             image_url: {
-              url: "data:image/jpeg;base64,{base64_image}",
+              url: image,
             },
           },
         ],
@@ -124,14 +127,8 @@ app.post("blockly-insight", async (c) => {
   });
 
   return c.streamText(async (stream) => {
-    for await (const message of vision) {
-      const text = message.choices[0]?.delta.content ?? "";
-      await Promise.all(
-        Array.from(text).map(async (s) => {
-          await stream.write(s);
-          await stream.sleep(20);
-        })
-      );
+    for await (const message of chatStream) {
+      await stream.write(message.choices[0].delta.content ?? "");
     }
   });
 });
