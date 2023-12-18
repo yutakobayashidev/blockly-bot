@@ -1,0 +1,6 @@
+{
+  "name": "blockly-gpt",
+  "devDependencies": {
+    "@biomejs/biome": "^1.4.1"
+  }
+}
