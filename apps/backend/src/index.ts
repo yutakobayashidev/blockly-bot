@@ -102,7 +102,7 @@ app.post("blockly-insight", async (c) => {
   const chatStream = await c.get("openai").chat.completions.create({
     model: "gpt-4-vision-preview",
     stream: true,
-    max_tokens: 100,
+    max_tokens: 1000,
     messages: [
       {
         role: "system",

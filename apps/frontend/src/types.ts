@@ -17,5 +17,6 @@ export type Message = {
   role: "user" | "bot";
   text: string;
   type?: "insight" | "build";
+  image?: string;
   xml?: string;
 };

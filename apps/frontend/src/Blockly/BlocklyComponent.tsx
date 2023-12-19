@@ -189,14 +189,25 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         let lastMessage = prevMessages[prevMessages.length - 1];
 
         if (lastMessage && lastMessage.role === "bot") {
-          lastMessage = { ...lastMessage, text: res, xml: base64Image };
+          lastMessage = {
+            ...lastMessage,
+            text: res,
+            image: base64Image,
+            xml: JSON.parse(res).xml,
+          };
           // 最後のメッセージを更新した配列を作成します
           const updatedMessages = prevMessages.slice(0, -1).concat(lastMessage);
           return updatedMessages;
         }
         return [
           ...prevMessages,
-          { text: res, role: "bot", type: "build", xml: base64Image },
+          {
+            text: res,
+            role: "bot",
+            type: "build",
+            image: base64Image,
+            xml: JSON.parse(res).xml,
+          },
         ];
       });
 
@@ -264,7 +275,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 text: "このBlocklyブロックは何を行っているか説明してください。",
                 role: "user",
                 type: "insight",
-                xml: base64Image,
+                image: base64Image,
               },
             ]);
 
@@ -478,13 +489,42 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                           </div>
                         ) : null}
                       </div>
-                      <div className="prose">
+                      <div className="prose break-words overflow-wrap whitespace-pre-wrap">
                         <Markdown>{message.text}</Markdown>
-                        {message.xml && (
-                          <img
-                            src={`data:image/png;base64,${message.xml}`}
-                            alt="Blockly Block Preview"
-                          />
+                        {message.image && (
+                          <>
+                            <div className="border px-4 py-2">
+                              <img
+                                src={`data:image/png;base64,${message.image}`}
+                                alt="Blockly Block Preview"
+                              />
+                            </div>
+                            {message.image &&
+                              message.role === "bot" &&
+                              message.xml && (
+                                <div className="flex mt-5 justify-end">
+                                  <Button
+                                    onClick={() => {
+                                      if (
+                                        !(
+                                          primaryWorkspace.current &&
+                                          message.xml
+                                        )
+                                      )
+                                        return;
+                                      Blockly.Xml.domToWorkspace(
+                                        Blockly.utils.xml.textToDom(
+                                          message.xml
+                                        ),
+                                        primaryWorkspace.current
+                                      );
+                                    }}
+                                  >
+                                    ワークスペースに追加
+                                  </Button>
+                                </div>
+                              )}
+                          </>
                         )}
                       </div>
                     </div>
