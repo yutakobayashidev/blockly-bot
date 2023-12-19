@@ -17,27 +17,37 @@ export async function blockToPngBase64(
     const height = bBox.bottom - bBox.top;
 
     const blockCanvas = block.getSvgRoot();
+
     let clone = blockCanvas.cloneNode(true) as SVGSVGElement;
-
-    console.debug(clone);
-
     clone.removeAttribute("transform");
     Blockly.utils.dom.removeClass(clone, "blocklySelected");
 
+    // Create wrapper for the cloned SVG
+    let wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    wrapper.setAttribute("class", "geras-renderer classic-theme");
+    wrapper.appendChild(clone);
+
     let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.appendChild(clone);
-    console.debug(clone);
+    svg.appendChild(wrapper);
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svg.setAttribute("width", width.toString());
     svg.setAttribute("height", height.toString());
 
-    // Include styles.
-    const css = Array.from(document.head.querySelectorAll("style")).find((el) =>
+    // Include styles from specific style tag and Blockly's styles
+    let gerasClassicStyle = document.getElementById(
+      "blockly-renderer-style-geras-classic"
+    ) as HTMLStyleElement;
+    let blocklySvgStyle = Array.from(
+      document.head.querySelectorAll("style")
+    ).find((el) =>
       /\.blocklySvg/.test(el.textContent || "")
     ) as HTMLStyleElement;
+
     let style = document.createElement("style");
-    style.textContent = css.textContent || "";
+    style.textContent = `${gerasClassicStyle.textContent || ""}\n${
+      blocklySvgStyle.textContent || ""
+    }`;
     svg.insertBefore(style, svg.firstChild);
 
     // Serialize SVG and convert to PNG.
@@ -54,9 +64,8 @@ export async function blockToPngBase64(
         let context = canvas.getContext("2d");
         if (context) {
           context.drawImage(img, 0, 0, width, height);
-          // PNGデータURIではなく、base64エンコードされたPNGを返す
           const dataUri = canvas.toDataURL("image/png");
-          const base64Data = dataUri.split(",")[1]; // データURIからbase64部分を抽出
+          const base64Data = dataUri.split(",")[1];
           resolve(base64Data);
         } else {
           reject(new Error("Failed to get canvas context"));

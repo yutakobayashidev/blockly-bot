@@ -28,7 +28,7 @@ import locale from "blockly/msg/ja";
 import "blockly/blocks";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { Play, Code, UserPlus } from "lucide-react";
+import { Play, Code, UserPlus, Plus } from "lucide-react";
 import { pythonGenerator } from "blockly/python";
 import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
@@ -104,6 +104,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleBlockGenerate = async () => {
+    setInput("");
     setLoading(true);
     let res = "";
     try {
@@ -469,6 +470,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 </div>
               ) : (
                 <div className="space-y-6">
+                  {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation> */}
                   {messages.map((message, index) => (
                     // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
                     <div key={index} className="flex items-start">
@@ -493,7 +495,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                         <Markdown>{message.text}</Markdown>
                         {message.image && (
                           <>
-                            <div className="border px-4 py-2">
+                            <div className="border px-4">
                               <img
                                 src={`data:image/png;base64,${message.image}`}
                                 alt="Blockly Block Preview"
@@ -504,6 +506,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                               message.xml && (
                                 <div className="flex mt-5 justify-end">
                                   <Button
+                                    className="bg-orange-500 hover:bg-orange-600"
                                     onClick={() => {
                                       if (
                                         !(
@@ -520,6 +523,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                                       );
                                     }}
                                   >
+                                    <Plus className="h-5 w-5 mr-2" />
                                     ワークスペースに追加
                                   </Button>
                                 </div>
