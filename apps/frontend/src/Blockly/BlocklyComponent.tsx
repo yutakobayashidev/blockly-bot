@@ -147,6 +147,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   );
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showxml, setShowxml] = useState(false);
 
   console.debug(output);
 
@@ -183,7 +184,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   useEffect(() => {
     renderXmlAsSvg(blockly_xml);
-  }, []);
+    setShowxml(true);
+  }, [renderXmlAsSvg]);
 
   const generateCode = () => {
     let generatedCode;
@@ -291,6 +293,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         preconditionFn: () => "enabled",
         scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
         weight: 0,
+        // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation>
         callback: async (scope) => {
           try {
             if (!scope.block) return console.error("No block selected");
@@ -349,7 +352,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       Blockly.ContextMenuRegistry.registry.unregister("ai_correction");
       Blockly.ContextMenuRegistry.registry.unregister("ai_insight");
     };
-  }, [primaryWorkspace, toolbox, blocklyDiv, props]); // Dependencies array
+  }, [props]);
 
   const get_svg = () => {
     const json = JSON.parse(output);
@@ -471,16 +474,34 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               )}
             </div>
           </div>
-          <div
-            ref={svgRef}
-            className="injectionDiv mt-5 geras-renderer classic-theme"
-          />
           <Card className="mb-5">
             <CardHeader>
               <CardTitle>LLM Response: (Debug)</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>{output}</p>
+              <p>
+                {output}
+                {showxml && (
+                  <div>
+                    <Button
+                      onClick={() => {
+                        if (!(primaryWorkspace.current && svgRef.current))
+                          return;
+                        Blockly.Xml.domToWorkspace(
+                          Blockly.utils.xml.textToDom(blockly_xml),
+                          primaryWorkspace.current
+                        );
+                      }}
+                    >
+                      Add WorkSpace
+                    </Button>
+                    <div
+                      ref={svgRef}
+                      className="geras-renderer classic-theme"
+                    />
+                  </div>
+                )}
+              </p>
             </CardContent>
           </Card>
           <div className="flex items-center">
