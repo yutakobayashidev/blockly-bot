@@ -34,7 +34,8 @@ import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ReactNode, useState } from "react";
+import { useState } from "react";
+import { Bot, UserRoundSearch } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RegistryItem } from "blockly/core/contextmenu_registry";
+import Markdown from "react-markdown";
+import { blockToPngBase64 } from "@/lib/helper";
+import { BlocklyComponentProps, Message } from "@/types";
 
 Blockly.setLocale(locale);
 
@@ -54,88 +58,6 @@ const blockly_xml = `
 <block type="controls_ifelse" x="0" y="0"></block>
 </xml>
       `;
-
-// see https://github.com/jollytoad/blockly/blob/jollytoad/download-block/tests/playgrounds/screenshot.js
-
-/**
- * Convert an SVG of a block to a PNG data URI.
- * @param {Blockly.BlockSvg} block The block.
- * @returns {Promise<string>} A promise that resolves with the data URI.
- */
-async function blockToPngBase64(block: Blockly.BlockSvg): Promise<string> {
-  try {
-    // Calculate block dimensions and create an SVG element.
-    const bBox = block.getBoundingRectangle();
-    const width = bBox.right - bBox.left;
-    const height = bBox.bottom - bBox.top;
-
-    const blockCanvas = block.getSvgRoot();
-    let clone = blockCanvas.cloneNode(true) as SVGSVGElement;
-
-    console.debug(clone);
-
-    clone.removeAttribute("transform");
-    Blockly.utils.dom.removeClass(clone, "blocklySelected");
-
-    let svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.appendChild(clone);
-    console.debug(clone);
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.setAttribute("width", width.toString());
-    svg.setAttribute("height", height.toString());
-
-    // Include styles.
-    const css = Array.from(document.head.querySelectorAll("style")).find((el) =>
-      /\.blocklySvg/.test(el.textContent || "")
-    ) as HTMLStyleElement;
-    let style = document.createElement("style");
-    style.textContent = css.textContent || "";
-    svg.insertBefore(style, svg.firstChild);
-
-    // Serialize SVG and convert to PNG.
-    let svgAsXML = new XMLSerializer().serializeToString(svg);
-    svgAsXML = svgAsXML.replace(/&nbsp/g, "&#160");
-    const data = `data:image/svg+xml,${encodeURIComponent(svgAsXML)}`;
-
-    return new Promise<string>((resolve, reject) => {
-      let img = new Image();
-      img.onload = () => {
-        let canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        let context = canvas.getContext("2d");
-        if (context) {
-          context.drawImage(img, 0, 0, width, height);
-          // PNGデータURIではなく、base64エンコードされたPNGを返す
-          const dataUri = canvas.toDataURL("image/png");
-          const base64Data = dataUri.split(",")[1]; // データURIからbase64部分を抽出
-          resolve(base64Data);
-        } else {
-          reject(new Error("Failed to get canvas context"));
-        }
-      };
-      img.onerror = reject;
-      img.src = data;
-    });
-  } catch (error) {
-    console.error("Error in blockToPng:", error);
-    throw error;
-  }
-}
-
-interface BlocklyComponentProps {
-  initialXml?: string;
-  children?: ReactNode;
-  readOnly?: boolean;
-  trashcan?: boolean;
-  media?: string;
-  move?: {
-    scrollbars?: boolean;
-    drag?: boolean;
-    wheel?: boolean;
-  };
-}
 
 function BlocklyComponent(props: BlocklyComponentProps) {
   const [code, setCode] = useState(null);
@@ -148,6 +70,13 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showxml, setShowxml] = useState(false);
+  const [onbording, setOnbording] = useState(false);
+
+  useEffect(() => {
+    setOnbording(true);
+  }, []);
+
+  const [messages, setMessages] = useState<Message[]>([]);
 
   console.debug(output);
 
@@ -215,7 +144,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
-  const handleAIBlockPlacement = async () => {
+  const handleBlockGenerate = async () => {
     setLoading(true);
     const response = await fetch(
       `${import.meta.env.VITE_API_URL}/build-block`,
@@ -296,12 +225,23 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation>
         callback: async (scope) => {
           try {
+            setLoading(true);
+
             if (!scope.block) return console.error("No block selected");
 
             const base64Image = await blockToPngBase64(scope.block);
 
             const xmlDom = Blockly.Xml.blockToDom(scope.block);
             const xmlText = new XMLSerializer().serializeToString(xmlDom);
+
+            setMessages((prevMessages) => [
+              ...prevMessages,
+              {
+                text: "このBlocklyブロックは何を行っているか説明してください。",
+                role: "user",
+                type: "insight",
+              },
+            ]);
 
             const response = await fetch(
               `${import.meta.env.VITE_API_URL}/blockly-insight`,
@@ -329,15 +269,32 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             const reader = data.getReader();
             const decoder = new TextDecoder();
             let done = false;
+            let res = "";
 
             while (!done) {
               const { value, done: doneReading } = await reader.read();
               done = doneReading;
-              const chunkValue = decoder.decode(value);
-              setOutput((prev) => prev + chunkValue);
+              res += decoder.decode(value);
+
+              setMessages((prevMessages) => {
+                // 最後のメッセージを取得します
+                let lastMessage = prevMessages[prevMessages.length - 1];
+
+                if (lastMessage && lastMessage.role === "bot") {
+                  lastMessage = { ...lastMessage, text: res };
+                  // 最後のメッセージを更新した配列を作成します
+                  const updatedMessages = prevMessages
+                    .slice(0, -1)
+                    .concat(lastMessage);
+                  return updatedMessages;
+                }
+                return [...prevMessages, { text: res, role: "bot" }];
+              });
             }
           } catch (error) {
             console.error("Error saving block as PNG:", error);
+          } finally {
+            setLoading(false);
           }
         },
         id: "ai_insight",
@@ -445,7 +402,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 <Play className="mr-1.5 h-5 w-5" />
                 コードを実行
               </Button>
-              <Button className="w-full" onClick={get_svg}>
+              <Button
+                className="w-full bg-orange-500 hover:bg-orange-600"
+                onClick={get_svg}
+              >
                 <Code className="mr-1.5 h-5 w-5" />
                 JSON
               </Button>
@@ -474,48 +434,57 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               )}
             </div>
           </div>
-          <Card className="mb-5">
+          <Card className="my-5 overflow-y-scroll">
             <CardHeader>
-              <CardTitle>LLM Response: (Debug)</CardTitle>
+              <CardTitle>AIとチャットする</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>
-                {output}
-                {showxml && (
-                  <div>
-                    <Button
-                      onClick={() => {
-                        if (!(primaryWorkspace.current && svgRef.current))
-                          return;
-                        Blockly.Xml.domToWorkspace(
-                          Blockly.utils.xml.textToDom(blockly_xml),
-                          primaryWorkspace.current
-                        );
-                      }}
-                    >
-                      Add WorkSpace
-                    </Button>
-                    <div
-                      ref={svgRef}
-                      className="geras-renderer classic-theme"
-                    />
-                  </div>
-                )}
-              </p>
+              {messages.length === 0 ? (
+                <div className="flex flex-col justify-center items-center">
+                  <Bot className="h-28 mb-5 w-28 text-gray-400" />
+                  <p className="text-gray-500">
+                    AIとチャットして、ブロックの作成を手伝ったもらったり、ワークスペースで既存のブロックを右クリックして、AIに質問したり、改善してみましょう。
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {messages.map((message, index) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                    <div key={index} className="flex items-start">
+                      <div className="mr-3">
+                        {message.role === "bot" ? (
+                          <div className="select-none rounded-sm bg-blue-500 text-white h-10 w-10 flex justify-center items-center">
+                            <Bot className="h-7 w-7" />
+                          </div>
+                        ) : message.role === "user" &&
+                          message.type === "insight" ? (
+                          <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
+                            <UserRoundSearch className="h-5 text-gray-800 w-5" />
+                          </div>
+                        ) : null}
+                      </div>
+                      <Markdown className="prose">{message.text}</Markdown>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex mt-5 items-center">
+                <Input
+                  type="text"
+                  value={input}
+                  className="flex-grow mr-3"
+                  placeholder="for文を三回して、Hello World!を5回表示したい"
+                  onChange={(event) => setInput(event.target.value)}
+                />
+                <Button
+                  disabled={loading}
+                  onClick={() => handleBlockGenerate()}
+                >
+                  {loading ? "生成中..." : "生成"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
-          <div className="flex items-center">
-            <Input
-              type="text"
-              value={input}
-              className="flex-grow mr-3"
-              placeholder="for文を三回して、Hello World!を5回表示したい"
-              onChange={(event) => setInput(event.target.value)}
-            />
-            <Button disabled={loading} onClick={() => handleAIBlockPlacement()}>
-              {loading ? "生成中..." : "生成"}
-            </Button>
-          </div>
         </div>
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -543,6 +512,38 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           </div>
           <DialogFooter className="sm:justify-center justify-center">
             <Button onClick={handleDialogSubmit}>生成する</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={onbording} onOpenChange={setOnbording}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-3xl text-center">
+              BlocklyGPTの紹介
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="text-gray-500 space-y-5">
+              <p>
+                BlocklyGPTは、OpenAIの技術を活用して、Google
+                Blocklyのブロックを自然言語で操作する実験プロジェクトです。
+              </p>
+              <p>
+                自然言語から既存のブロックの原理を説明したり、新しくブロックを作成したりしてくれます。このプロジェクトの目的は、プログラミング学習をAI技術でより簡単にすることです。
+              </p>
+              <p>
+                <a
+                  className="text-blue-600"
+                  href="https://github.com/yutakobayashidev/blockly-gpt/tree/main"
+                >
+                  GitHub
+                </a>
+                でOSSプロジェクトとして取り組んでいます。
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-center">
+            <Button onClick={() => setOnbording(false)}>早速試す</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
