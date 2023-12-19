@@ -50,6 +50,7 @@ import type { RegistryItem } from "blockly/core/contextmenu_registry";
 import Markdown from "react-markdown";
 import { blockToPngBase64 } from "@/lib/helper";
 import { BlocklyComponentProps, Message } from "@/types";
+import { toast } from "sonner";
 
 Blockly.setLocale(locale);
 
@@ -146,38 +147,43 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const handleBlockGenerate = async () => {
     setLoading(true);
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/build-block`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ prompt: input }),
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/build-block`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt: input }),
+        }
+      );
+
+      if (!response.ok) {
+        toast.error("APIとの通信に失敗しました。");
+        return;
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(response.statusText);
+      const data = response.body;
+      if (!data) {
+        return;
+      }
+
+      const reader = data.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunkValue = decoder.decode(value);
+        setOutput((prev) => prev + chunkValue);
+      }
+    } catch {
+      toast.error("ブロックの生成に失敗しました");
+    } finally {
+      setLoading(false);
     }
-
-    const data = response.body;
-    if (!data) {
-      return;
-    }
-
-    const reader = data.getReader();
-    const decoder = new TextDecoder();
-    let done = false;
-
-    while (!done) {
-      const { value, done: doneReading } = await reader.read();
-      done = doneReading;
-      const chunkValue = decoder.decode(value);
-      setOutput((prev) => prev + chunkValue);
-    }
-
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -258,7 +264,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             );
 
             if (!response.ok) {
-              throw new Error(response.statusText);
+              toast.error("APIとの通信に失敗しました。");
             }
 
             const data = response.body;
@@ -291,8 +297,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 return [...prevMessages, { text: res, role: "bot" }];
               });
             }
-          } catch (error) {
-            console.error("Error saving block as PNG:", error);
+          } catch {
+            toast.error("ブロックとの対話に失敗しました");
           } finally {
             setLoading(false);
           }

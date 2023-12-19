@@ -30,91 +30,95 @@ import BlocklyComponent, {
 } from "./Blockly";
 import "./blocks/customblocks";
 import "./generator/generator";
+import { Toaster } from "sonner";
 
 export default function App() {
   return (
-    <BlocklyComponent
-      readOnly={false}
-      trashcan={true}
-      media={"media/"}
-      move={{
-        scrollbars: true,
-        drag: true,
-        wheel: true,
-      }}
-      initialXml={`
+    <>
+      <BlocklyComponent
+        readOnly={false}
+        trashcan={true}
+        media={"media/"}
+        move={{
+          scrollbars: true,
+          drag: true,
+          wheel: true,
+        }}
+        initialXml={`
 <xml xmlns="http://www.w3.org/1999/xhtml">
 <block type="controls_ifelse" x="0" y="0"></block>
 </xml>
       `}
-    >
-      <Category name="Logic" categorystyle="logic_category">
-        <Block type="controls_if" />
-        <Block type="logic_compare" />
-        <Block type="logic_operation" />
-        <Block type="logic_negate" />
-        <Block type="logic_boolean" />
-        <Block type="logic_ternary" />
-      </Category>
-      <Category name="Loops" categorystyle="loop_category">
-        <Block type="controls_repeat" />
-        <Block type="controls_whileUntil" />
-        <Block type="controls_forEach" />
-      </Category>
-      <Category name="Text" colour="#5C68A6">
-        <Block type="text_charAt">
-          <Value name="VALUE">
-            <Block type="variables_get">
-              <Field name="VAR">text</Field>
-            </Block>
-          </Value>
-        </Block>
-        <Block is="block" type="text_print">
-          <Value name="VALUE">
-            <Field is="field" name="TEXT">
-              abc
-            </Field>
-          </Value>
-        </Block>
-      </Category>
-      <Category name="Math">
-        <Block type="math_number"></Block>
-        <Block type="math_arithmetic"></Block>
-        <Block type="math_single"></Block>
-      </Category>
-      <Category name="Text">
-        <Block type="text"></Block>
-        <Block type="text_length"></Block>
-        <Block type="text_print"></Block>
-        <Block type="text_prompt_ext"></Block>
-      </Category>
-      <Category name="Lists">
-        <Block type="lists_create_with"></Block>
-        <Block type="lists_repeat">
-          <Value name="NUM">
-            <Shadow type="math_number">
-              <Field name="NUM">5</Field>
-            </Shadow>
-          </Value>
-        </Block>
-        <Block type="lists_indexOf">
-          <Value name="VALUE">
-            <Block type="variables_get">
-              <Field name="VAR">{"{listVariable}"}</Field>
-            </Block>
-          </Value>
-        </Block>
-      </Category>
-      <Category name="Variables" custom="VARIABLE" />
-      <Category name="Functions" custom="PROCEDURE" />
-      <Category name="Values">
-        <Block type="math_number" />
-        <Block type="text" />
-      </Category>
-      <Category name="Custom Blocks" colour="#4F6272">
-        <Block type="test_react_field" />
-        <Block type="test_react_date_field" />
-      </Category>
-    </BlocklyComponent>
+      >
+        <Category name="Logic" categorystyle="logic_category">
+          <Block type="controls_if" />
+          <Block type="logic_compare" />
+          <Block type="logic_operation" />
+          <Block type="logic_negate" />
+          <Block type="logic_boolean" />
+          <Block type="logic_ternary" />
+        </Category>
+        <Category name="Loops" categorystyle="loop_category">
+          <Block type="controls_repeat" />
+          <Block type="controls_whileUntil" />
+          <Block type="controls_forEach" />
+        </Category>
+        <Category name="Text" colour="#5C68A6">
+          <Block type="text_charAt">
+            <Value name="VALUE">
+              <Block type="variables_get">
+                <Field name="VAR">text</Field>
+              </Block>
+            </Value>
+          </Block>
+          <Block is="block" type="text_print">
+            <Value name="VALUE">
+              <Field is="field" name="TEXT">
+                abc
+              </Field>
+            </Value>
+          </Block>
+        </Category>
+        <Category name="Math">
+          <Block type="math_number" />
+          <Block type="math_arithmetic" />
+          <Block type="math_single" />
+        </Category>
+        <Category name="Text">
+          <Block type="text" />
+          <Block type="text_length" />
+          <Block type="text_print" />
+          <Block type="text_prompt_ext" />
+        </Category>
+        <Category name="Lists">
+          <Block type="lists_create_with" />
+          <Block type="lists_repeat">
+            <Value name="NUM">
+              <Shadow type="math_number">
+                <Field name="NUM">5</Field>
+              </Shadow>
+            </Value>
+          </Block>
+          <Block type="lists_indexOf">
+            <Value name="VALUE">
+              <Block type="variables_get">
+                <Field name="VAR">{"{listVariable}"}</Field>
+              </Block>
+            </Value>
+          </Block>
+        </Category>
+        <Category name="Variables" custom="VARIABLE" />
+        <Category name="Functions" custom="PROCEDURE" />
+        <Category name="Values">
+          <Block type="math_number" />
+          <Block type="text" />
+        </Category>
+        <Category name="Custom Blocks" colour="#4F6272">
+          <Block type="test_react_field" />
+          <Block type="test_react_date_field" />
+        </Category>
+      </BlocklyComponent>
+      <Toaster position="top-center" />
+    </>
   );
 }
