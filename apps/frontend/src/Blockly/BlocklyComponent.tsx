@@ -272,7 +272,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             setMessages((prevMessages) => [
               ...prevMessages,
               {
-                text: "このBlocklyブロックは何を行っているか説明してください。",
+                text: "このBlocklyブロックが何を行っているか説明してください。",
                 role: "user",
                 type: "insight",
                 image: base64Image,
