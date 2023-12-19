@@ -28,7 +28,7 @@ import locale from "blockly/msg/ja";
 import "blockly/blocks";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { Play, Code } from "lucide-react";
+import { Play, Code, UserPlus } from "lucide-react";
 import { pythonGenerator } from "blockly/python";
 import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
@@ -148,6 +148,15 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const handleBlockGenerate = async () => {
     setLoading(true);
     try {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        {
+          text: input,
+          role: "user",
+          type: "build",
+        },
+      ]);
+
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/build-block`,
         {
@@ -246,6 +255,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 text: "このBlocklyブロックは何を行っているか説明してください。",
                 role: "user",
                 type: "insight",
+                xml: base64Image,
               },
             ]);
 
@@ -467,9 +477,22 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                           <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
                             <UserRoundSearch className="h-5 text-gray-800 w-5" />
                           </div>
+                        ) : message.role === "user" &&
+                          message.type === "build" ? (
+                          <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
+                            <UserPlus className="h-5 text-gray-800 w-5" />
+                          </div>
                         ) : null}
                       </div>
-                      <Markdown className="prose">{message.text}</Markdown>
+                      <div className="prose">
+                        <Markdown>{message.text}</Markdown>
+                        {message.xml && (
+                          <img
+                            src={`data:image/png;base64,${message.xml}`}
+                            alt="Blockly Block Preview"
+                          />
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
