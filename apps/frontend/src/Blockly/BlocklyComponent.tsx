@@ -304,6 +304,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
             if (!response.ok) {
               toast.error("APIとの通信に失敗しました。");
+              return;
             }
 
             const data = response.body;
@@ -468,7 +469,16 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           </div>
           <Card className="my-5 overflow-y-scroll">
             <CardHeader>
-              <CardTitle>AIとチャットする</CardTitle>
+              <CardTitle className="flex items-center font-bold justify-between">
+                AIとチャットする
+                <button
+                  type="button"
+                  className="text-sm"
+                  onClick={() => setMessages([])}
+                >
+                  <Plus />
+                </button>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {messages.length === 0 ? (
