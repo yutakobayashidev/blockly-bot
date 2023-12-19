@@ -24,6 +24,7 @@
 import { useEffect, useRef } from "react";
 import Blockly from "blockly/core";
 import { javascriptGenerator } from "blockly/javascript";
+import { dartGenerator } from "blockly/dart";
 import locale from "blockly/msg/ja";
 import "blockly/blocks";
 import SyntaxHighlighter from "react-syntax-highlighter";
@@ -36,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { Bot, UserRoundSearch } from "lucide-react";
+import { luaGenerator } from "blockly/lua";
 import {
   Dialog,
   DialogContent,
@@ -82,6 +84,12 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         generatedCode = javascriptGenerator.workspaceToCode(
           primaryWorkspace.current
         );
+        break;
+      case "dart":
+        generatedCode = dartGenerator.workspaceToCode(primaryWorkspace.current);
+        break;
+      case "lua":
+        generatedCode = luaGenerator.workspaceToCode(primaryWorkspace.current);
         break;
       case "python":
         generatedCode = pythonGenerator.workspaceToCode(
@@ -443,6 +451,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                   <TabsTrigger value="javascript">🌐 JavaScript</TabsTrigger>
                   <TabsTrigger value="python">🐍 Python</TabsTrigger>
                   <TabsTrigger value="php">🐘 PHP</TabsTrigger>
+                  <TabsTrigger value="dart">🎯 Dart</TabsTrigger>
+                  <TabsTrigger value="lua">🌙 Lua</TabsTrigger>
                 </TabsList>
               </Tabs>
               {code && (
