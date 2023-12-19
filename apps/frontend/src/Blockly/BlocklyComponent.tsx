@@ -54,12 +54,6 @@ import { toast } from "sonner";
 
 Blockly.setLocale(locale);
 
-const blockly_xml = `
-<xml xmlns="http://www.w3.org/1999/xhtml">
-<block type="controls_ifelse" x="0" y="0"></block>
-</xml>
-      `;
-
 function BlocklyComponent(props: BlocklyComponentProps) {
   const [code, setCode] = useState(null);
   const [input, setInput] = useState("");
@@ -68,9 +62,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [selectedBlock, setSelectedBlock] = useState<Blockly.Block | null>(
     null
   );
-  const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showxml, setShowxml] = useState(false);
   const [onbording, setOnbording] = useState(false);
 
   useEffect(() => {
@@ -79,43 +71,9 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const [messages, setMessages] = useState<Message[]>([]);
 
-  console.debug(output);
-
   const [open, setOpen] = useState(false);
 
-  const svgRef = useRef<HTMLDivElement>(null);
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
-
-  const renderXmlAsSvg = (xmlText: string) => {
-    if (!hiddenWorkspaceRef.current) {
-      hiddenWorkspaceRef.current = Blockly.inject(
-        document.createElement("div"),
-        {
-          readOnly: true,
-        }
-      );
-    }
-
-    const workspaceSvg = hiddenWorkspaceRef.current;
-    Blockly.Xml.domToWorkspace(
-      Blockly.utils.xml.textToDom(xmlText),
-      workspaceSvg
-    );
-
-    const svgElement = workspaceSvg.getParentSvg();
-
-    if (svgElement && svgRef.current) {
-      svgRef.current.innerHTML = svgElement.outerHTML;
-    }
-
-    // Cleanup: Clear the workspace for next render
-    workspaceSvg.clear();
-  };
-
-  useEffect(() => {
-    renderXmlAsSvg(blockly_xml);
-    setShowxml(true);
-  }, [renderXmlAsSvg]);
 
   const generateCode = () => {
     let generatedCode;
@@ -147,6 +105,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const handleBlockGenerate = async () => {
     setLoading(true);
+    let res = "";
     try {
       setMessages((prevMessages) => [
         ...prevMessages,
@@ -185,12 +144,62 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        const chunkValue = decoder.decode(value);
-        setOutput((prev) => prev + chunkValue);
+        res += decoder.decode(value);
+
+        setMessages((prevMessages) => {
+          // 最後のメッセージを取得します
+          let lastMessage = prevMessages[prevMessages.length - 1];
+
+          if (lastMessage && lastMessage.role === "bot") {
+            lastMessage = { ...lastMessage, text: res };
+            // 最後のメッセージを更新した配列を作成します
+            const updatedMessages = prevMessages
+              .slice(0, -1)
+              .concat(lastMessage);
+            return updatedMessages;
+          }
+          return [...prevMessages, { text: res, role: "bot", type: "build" }];
+        });
       }
     } catch {
       toast.error("ブロックの生成に失敗しました");
     } finally {
+      if (!hiddenWorkspaceRef.current) {
+        hiddenWorkspaceRef.current = Blockly.inject(
+          document.createElement("div"),
+          {
+            readOnly: true,
+          }
+        );
+      }
+
+      const workspaceSvg = hiddenWorkspaceRef.current;
+      Blockly.Xml.domToWorkspace(
+        Blockly.utils.xml.textToDom(JSON.parse(res).xml),
+        workspaceSvg
+      );
+      const block = hiddenWorkspaceRef.current.getTopBlocks()[0];
+
+      workspaceSvg.clear();
+
+      const base64Image = await blockToPngBase64(block);
+
+      setMessages((prevMessages) => {
+        // 最後のメッセージを取得します
+        let lastMessage = prevMessages[prevMessages.length - 1];
+
+        if (lastMessage && lastMessage.role === "bot") {
+          lastMessage = { ...lastMessage, text: res, xml: base64Image };
+          // 最後のメッセージを更新した配列を作成します
+          const updatedMessages = prevMessages.slice(0, -1).concat(lastMessage);
+          return updatedMessages;
+        }
+        return [
+          ...prevMessages,
+          { text: res, role: "bot", type: "build", xml: base64Image },
+        ];
+      });
+
       setLoading(false);
     }
   };
@@ -327,12 +336,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     };
   }, [props]);
 
-  const get_svg = () => {
-    const json = JSON.parse(output);
-
-    renderXmlAsSvg(json.xml);
-  };
-
   const handleDialogSubmit = async () => {
     setOpen(false);
 
@@ -355,8 +358,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       );
 
       const json = await response.json();
-
-      console.debug(json);
 
       const oldBlocks = primaryWorkspace.current.getAllBlocks();
       Blockly.Xml.domToWorkspace(
@@ -417,13 +418,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               >
                 <Play className="mr-1.5 h-5 w-5" />
                 コードを実行
-              </Button>
-              <Button
-                className="w-full bg-orange-500 hover:bg-orange-600"
-                onClick={get_svg}
-              >
-                <Code className="mr-1.5 h-5 w-5" />
-                JSON
               </Button>
             </div>
             <div>
