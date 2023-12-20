@@ -34,8 +34,8 @@ import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
-import { Bot, Play, Code, Plus } from "lucide-react";
+import { useState, ChangeEvent } from "react";
+import { Bot, Play, Code, Plus, FileUp, FileDown } from "lucide-react";
 import { luaGenerator } from "blockly/lua";
 import {
   Dialog,
@@ -68,6 +68,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [onbording, setOnbording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [open, setOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const onbording = Cookies.get("onbording");
@@ -77,6 +78,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   }, []);
 
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
+  const primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const generateCode = () => {
     let generatedCode;
@@ -109,8 +111,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const toolbox = useRef<HTMLDivElement>(null);
-
-  let primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
   const handleBlockGenerate = async () => {
     setInput("");
@@ -265,10 +265,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
             if (!scope.block) return console.error("No block selected");
 
-            const base64Image = await blockToPngBase64(scope.block);
-
-            const xmlDom = Blockly.Xml.blockToDom(scope.block);
-            const xmlText = new XMLSerializer().serializeToString(xmlDom);
+            const image = await blockToPngBase64(scope.block);
 
             setMessages((prevMessages) => [
               ...prevMessages,
@@ -276,7 +273,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 text: "このBlocklyブロックが何を行っているか説明してください。",
                 role: "user",
                 type: "insight",
-                image: base64Image,
+                image,
               },
             ]);
 
@@ -285,8 +282,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             await readStreamData(
               `${import.meta.env.VITE_API_URL}/blockly-insight`,
               {
-                image: `data:image/png;base64,${base64Image}`,
-                xml: xmlText,
+                image: `data:image/png;base64,${image}`,
+                xml: Blockly.Xml.domToPrettyText(
+                  Blockly.Xml.blockToDom(scope.block)
+                ),
               },
               (chunk) => {
                 res += chunk;
@@ -379,6 +378,23 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       primaryWorkspace.current
     );
   };
+  const handleFileRead = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      const xmlText = e.target?.result;
+      if (typeof xmlText === "string" && primaryWorkspace.current) {
+        const xml = Blockly.utils.xml.textToDom(xmlText);
+        primaryWorkspace.current.clear();
+        Blockly.Xml.domToWorkspace(xml, primaryWorkspace.current);
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <>
@@ -402,7 +418,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           style={{ flex: "1.2 1 0px", overflow: "hidden", userSelect: "text" }}
         >
           <div>
-            <div className="flex mb-5 gap-2 items-center w-full">
+            <div className="grid grid-cols-2 mb-5 gap-2 items-center w-full">
               <Button className="w-full" onClick={generateCode}>
                 <Code className="mr-1.5 h-5 w-5" />
                 コードに変換
@@ -420,6 +436,44 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               >
                 <Play className="mr-1.5 h-5 w-5" />
                 コードを実行
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!primaryWorkspace.current) return;
+
+                  const xmlDom = Blockly.Xml.workspaceToDom(
+                    primaryWorkspace.current
+                  );
+                  const xml = Blockly.Xml.domToPrettyText(xmlDom);
+                  const link = document.createElement("a");
+
+                  const blob = new Blob([xml], { type: "text/xml" });
+                  const url = URL.createObjectURL(blob);
+
+                  link.setAttribute("href", url);
+                  link.setAttribute("download", "blockly.xml");
+                  link.click();
+                  link.remove();
+                  URL.revokeObjectURL(url);
+                }}
+                className="bg-orange-400 hover:bg-orange-500"
+              >
+                <FileUp className="mr-1.5 h-5 w-5" />
+                インポート
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileRead}
+                accept=".xml"
+              />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-green-500 hover:bg-green-600"
+              >
+                <FileDown className="mr-1.5 h-5 w-5" />
+                エクスポート
               </Button>
             </div>
             <div>
