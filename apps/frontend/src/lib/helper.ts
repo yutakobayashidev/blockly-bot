@@ -79,3 +79,38 @@ export async function blockToPngBase64(
     throw error;
   }
 }
+
+export const readStreamData = async <T>(
+  url: string,
+  body: T,
+  updateOutput: (chunk: string) => void
+) => {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
+  }
+
+  const data = response.body;
+  if (!data) {
+    return;
+  }
+
+  const reader = data.getReader();
+  const decoder = new TextDecoder();
+  let done = false;
+
+  while (!done) {
+    const { value, done: doneReading } = await reader.read();
+    done = doneReading;
+    if (value) {
+      updateOutput(decoder.decode(value));
+    }
+  }
+};

@@ -35,15 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import {
-  Bot,
-  UserRoundSearch,
-  AlertCircle,
-  Play,
-  Code,
-  UserPlus,
-  Plus,
-} from "lucide-react";
+import { Bot, Play, Code, Plus } from "lucide-react";
 import { luaGenerator } from "blockly/lua";
 import {
   Dialog,
@@ -56,10 +48,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { RegistryItem } from "blockly/core/contextmenu_registry";
-import Markdown from "react-markdown";
-import { blockToPngBase64 } from "@/lib/helper";
+import { blockToPngBase64, readStreamData } from "@/lib/helper";
 import { BlocklyComponentProps, Message } from "@/types";
 import { toast } from "sonner";
+import MessageList from "@/components/message-list";
 
 Blockly.setLocale(locale);
 
@@ -130,52 +122,28 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         },
       ]);
 
-      const response = await fetch(
+      await readStreamData(
         `${import.meta.env.VITE_API_URL}/build-block`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ prompt: input }),
+        { prompt: input },
+        (chunk) => {
+          res += chunk;
+
+          setMessages((prevMessages) => {
+            // 最後のメッセージを取得します
+            let lastMessage = prevMessages[prevMessages.length - 1];
+
+            if (lastMessage && lastMessage.role === "bot") {
+              lastMessage = { ...lastMessage, text: res };
+              // 最後のメッセージを更新した配列を作成します
+              const updatedMessages = prevMessages
+                .slice(0, -1)
+                .concat(lastMessage);
+              return updatedMessages;
+            }
+            return [...prevMessages, { text: res, role: "bot", type: "build" }];
+          });
         }
       );
-
-      if (!response.ok) {
-        toast.error("APIとの通信に失敗しました。");
-        setLoading(false);
-        return;
-      }
-
-      const data = response.body;
-      if (!data) {
-        return;
-      }
-
-      const reader = data.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        res += decoder.decode(value);
-
-        setMessages((prevMessages) => {
-          // 最後のメッセージを取得します
-          let lastMessage = prevMessages[prevMessages.length - 1];
-
-          if (lastMessage && lastMessage.role === "bot") {
-            lastMessage = { ...lastMessage, text: res };
-            // 最後のメッセージを更新した配列を作成します
-            const updatedMessages = prevMessages
-              .slice(0, -1)
-              .concat(lastMessage);
-            return updatedMessages;
-          }
-          return [...prevMessages, { text: res, role: "bot", type: "build" }];
-        });
-      }
     } catch {
       toast.error("ブロックの生成に失敗しました");
     } finally {
@@ -334,31 +302,31 @@ function BlocklyComponent(props: BlocklyComponentProps) {
               return;
             }
 
-            const reader = data.getReader();
-            const decoder = new TextDecoder();
-            let done = false;
             let res = "";
 
-            while (!done) {
-              const { value, done: doneReading } = await reader.read();
-              done = doneReading;
-              res += decoder.decode(value);
+            await readStreamData(
+              `${import.meta.env.VITE_API_URL}/blockly-insight`,
+              {
+                image: `data:image/png;base64,${base64Image}`,
+                xml: xmlText,
+              },
+              (chunk) => {
+                res += chunk;
 
-              setMessages((prevMessages) => {
-                // 最後のメッセージを取得します
-                let lastMessage = prevMessages[prevMessages.length - 1];
+                setMessages((prevMessages) => {
+                  let lastMessage = prevMessages[prevMessages.length - 1];
 
-                if (lastMessage && lastMessage.role === "bot") {
-                  lastMessage = { ...lastMessage, text: res };
-                  // 最後のメッセージを更新した配列を作成します
-                  const updatedMessages = prevMessages
-                    .slice(0, -1)
-                    .concat(lastMessage);
-                  return updatedMessages;
-                }
-                return [...prevMessages, { text: res, role: "bot" }];
-              });
-            }
+                  if (lastMessage && lastMessage.role === "bot") {
+                    lastMessage = { ...lastMessage, text: res };
+                    const updatedMessages = prevMessages
+                      .slice(0, -1)
+                      .concat(lastMessage);
+                    return updatedMessages;
+                  }
+                  return [...prevMessages, { text: res, role: "bot" }];
+                });
+              }
+            );
           } catch {
             toast.error("ブロックとの対話に失敗しました");
           } finally {
@@ -419,6 +387,14 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
       setSelectedBlock(null);
     }
+  };
+
+  const handleAddToWorkspace = (xml: string | undefined) => {
+    if (!(primaryWorkspace.current && xml)) return;
+    Blockly.Xml.domToWorkspace(
+      Blockly.utils.xml.textToDom(xml),
+      primaryWorkspace.current
+    );
   };
 
   return (
@@ -511,80 +487,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation> */}
-                  {messages.map((message, index) => (
-                    /* biome-ignore lint/suspicious/noArrayIndexKey: <explanation> */
-                    <div key={index}>
-                      {message.role === "error" ? (
-                        <div className="text-red-500 flex items-center text-sm">
-                          <AlertCircle className="mr-3 h-5 w-5" />
-                          <p className="flex-1">{message.text}</p>
-                        </div>
-                      ) : (
-                        <div className="flex items-start">
-                          <div className="mr-3">
-                            {message.role === "bot" ? (
-                              <div className="select-none rounded-sm bg-blue-500 text-white h-10 w-10 flex justify-center items-center">
-                                <Bot className="h-7 w-7" />
-                              </div>
-                            ) : message.role === "user" &&
-                              message.type === "insight" ? (
-                              <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
-                                <UserRoundSearch className="h-5 text-gray-800 w-5" />
-                              </div>
-                            ) : message.role === "user" &&
-                              message.type === "build" ? (
-                              <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
-                                <UserPlus className="h-5 text-gray-800 w-5" />
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className="prose break-words overflow-wrap whitespace-pre-wrap">
-                            <Markdown>{message.text}</Markdown>
-                            {message.image && (
-                              <>
-                                <div className="border px-4">
-                                  <img
-                                    src={`data:image/png;base64,${message.image}`}
-                                    alt="Blockly Block Preview"
-                                  />
-                                </div>
-                                {message.image &&
-                                  message.role === "bot" &&
-                                  message.xml && (
-                                    <div className="flex mt-5 justify-end">
-                                      <Button
-                                        className="bg-orange-500 hover:bg-orange-600"
-                                        onClick={() => {
-                                          if (
-                                            !(
-                                              primaryWorkspace.current &&
-                                              message.xml
-                                            )
-                                          )
-                                            return;
-                                          Blockly.Xml.domToWorkspace(
-                                            Blockly.utils.xml.textToDom(
-                                              message.xml
-                                            ),
-                                            primaryWorkspace.current
-                                          );
-                                        }}
-                                      >
-                                        <Plus className="h-5 w-5 mr-2" />
-                                        ワークスペースに追加
-                                      </Button>
-                                    </div>
-                                  )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <MessageList
+                  messages={messages}
+                  onAddToWorkspace={handleAddToWorkspace}
+                />
               )}
               <div className="flex mt-5 items-center">
                 <Input
