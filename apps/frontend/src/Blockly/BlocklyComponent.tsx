@@ -458,8 +458,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 }}
                 className="bg-orange-400 hover:bg-orange-500"
               >
-                <FileUp className="mr-1.5 h-5 w-5" />
-                インポート
+                <FileDown className="mr-1.5 h-5 w-5" />
+                エクスポート
               </Button>
               <input
                 type="file"
@@ -472,8 +472,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 onClick={() => fileInputRef.current?.click()}
                 className="bg-green-500 hover:bg-green-600"
               >
-                <FileDown className="mr-1.5 h-5 w-5" />
-                エクスポート
+                <FileUp className="mr-1.5 h-5 w-5" />
+                インポート
               </Button>
             </div>
             <div>
