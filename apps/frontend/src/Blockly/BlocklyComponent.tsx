@@ -29,14 +29,21 @@ import locale from "blockly/msg/ja";
 import "blockly/blocks";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { docco } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { Play, Code, UserPlus, Plus } from "lucide-react";
 import { pythonGenerator } from "blockly/python";
 import { phpGenerator } from "blockly/php";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import { Bot, UserRoundSearch } from "lucide-react";
+import {
+  Bot,
+  UserRoundSearch,
+  AlertCircle,
+  Play,
+  Code,
+  UserPlus,
+  Plus,
+} from "lucide-react";
 import { luaGenerator } from "blockly/lua";
 import {
   Dialog,
@@ -66,14 +73,12 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   );
   const [loading, setLoading] = useState(false);
   const [onbording, setOnbording] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     setOnbording(true);
   }, []);
-
-  const [messages, setMessages] = useState<Message[]>([]);
-
-  const [open, setOpen] = useState(false);
 
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
 
@@ -138,6 +143,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
       if (!response.ok) {
         toast.error("APIとの通信に失敗しました。");
+        setLoading(false);
         return;
       }
 
@@ -173,54 +179,69 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     } catch {
       toast.error("ブロックの生成に失敗しました");
     } finally {
-      if (!hiddenWorkspaceRef.current) {
-        hiddenWorkspaceRef.current = Blockly.inject(
-          document.createElement("div"),
-          {
-            readOnly: true,
-          }
-        );
-      }
-
-      const workspaceSvg = hiddenWorkspaceRef.current;
-      Blockly.Xml.domToWorkspace(
-        Blockly.utils.xml.textToDom(JSON.parse(res).xml),
-        workspaceSvg
-      );
-      const block = hiddenWorkspaceRef.current.getTopBlocks()[0];
-
-      workspaceSvg.clear();
-
-      const base64Image = await blockToPngBase64(block);
-
-      setMessages((prevMessages) => {
-        // 最後のメッセージを取得します
-        let lastMessage = prevMessages[prevMessages.length - 1];
-
-        if (lastMessage && lastMessage.role === "bot") {
-          lastMessage = {
-            ...lastMessage,
-            text: res,
-            image: base64Image,
-            xml: JSON.parse(res).xml,
-          };
-          // 最後のメッセージを更新した配列を作成します
-          const updatedMessages = prevMessages.slice(0, -1).concat(lastMessage);
-          return updatedMessages;
+      try {
+        if (!hiddenWorkspaceRef.current) {
+          hiddenWorkspaceRef.current = Blockly.inject(
+            document.createElement("div"),
+            {
+              readOnly: true,
+            }
+          );
         }
-        return [
-          ...prevMessages,
-          {
-            text: res,
-            role: "bot",
-            type: "build",
-            image: base64Image,
-            xml: JSON.parse(res).xml,
-          },
-        ];
-      });
 
-      setLoading(false);
+        const workspaceSvg = hiddenWorkspaceRef.current;
+        Blockly.Xml.domToWorkspace(
+          Blockly.utils.xml.textToDom(JSON.parse(res).xml),
+          workspaceSvg
+        );
+        const block = hiddenWorkspaceRef.current.getTopBlocks()[0];
+
+        workspaceSvg.clear();
+
+        const base64Image = await blockToPngBase64(block);
+
+        setMessages((prevMessages) => {
+          // 最後のメッセージを取得します
+          let lastMessage = prevMessages[prevMessages.length - 1];
+
+          if (lastMessage && lastMessage.role === "bot") {
+            lastMessage = {
+              ...lastMessage,
+              image: base64Image,
+              xml: JSON.parse(res).xml,
+            };
+            // 最後のメッセージを更新した配列を作成します
+            const updatedMessages = prevMessages
+              .slice(0, -1)
+              .concat(lastMessage);
+            return updatedMessages;
+          }
+          return [
+            ...prevMessages,
+            {
+              text: res,
+              role: "bot",
+              type: "build",
+              image: base64Image,
+              xml: JSON.parse(res).xml,
+            },
+          ];
+        });
+
+        setLoading(false);
+      } catch {
+        setMessages((prevMessages) => {
+          return [
+            ...prevMessages,
+            {
+              text: "ブロックの生成にエラーが発生しました。プロンプトをより具体的にしてみてください。",
+              role: "error",
+              type: "build",
+            },
+          ];
+        });
+        setLoading(false);
+      }
     }
   };
 
@@ -304,6 +325,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
             if (!response.ok) {
               toast.error("APIとの通信に失敗しました。");
+              setLoading(false);
               return;
             }
 
@@ -492,65 +514,74 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 <div className="space-y-6">
                   {/* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation> */}
                   {messages.map((message, index) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                    <div key={index} className="flex items-start">
-                      <div className="mr-3">
-                        {message.role === "bot" ? (
-                          <div className="select-none rounded-sm bg-blue-500 text-white h-10 w-10 flex justify-center items-center">
-                            <Bot className="h-7 w-7" />
+                    /* biome-ignore lint/suspicious/noArrayIndexKey: <explanation> */
+                    <div key={index}>
+                      {message.role === "error" ? (
+                        <div className="text-red-500 flex items-center text-sm">
+                          <AlertCircle className="mr-3 h-5 w-5" />
+                          <p className="flex-1">{message.text}</p>
+                        </div>
+                      ) : (
+                        <div className="flex items-start">
+                          <div className="mr-3">
+                            {message.role === "bot" ? (
+                              <div className="select-none rounded-sm bg-blue-500 text-white h-10 w-10 flex justify-center items-center">
+                                <Bot className="h-7 w-7" />
+                              </div>
+                            ) : message.role === "user" &&
+                              message.type === "insight" ? (
+                              <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
+                                <UserRoundSearch className="h-5 text-gray-800 w-5" />
+                              </div>
+                            ) : message.role === "user" &&
+                              message.type === "build" ? (
+                              <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
+                                <UserPlus className="h-5 text-gray-800 w-5" />
+                              </div>
+                            ) : null}
                           </div>
-                        ) : message.role === "user" &&
-                          message.type === "insight" ? (
-                          <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
-                            <UserRoundSearch className="h-5 text-gray-800 w-5" />
-                          </div>
-                        ) : message.role === "user" &&
-                          message.type === "build" ? (
-                          <div className="select-none rounded-sm border text-white h-10 w-10 flex justify-center items-center">
-                            <UserPlus className="h-5 text-gray-800 w-5" />
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="prose break-words overflow-wrap whitespace-pre-wrap">
-                        <Markdown>{message.text}</Markdown>
-                        {message.image && (
-                          <>
-                            <div className="border px-4">
-                              <img
-                                src={`data:image/png;base64,${message.image}`}
-                                alt="Blockly Block Preview"
-                              />
-                            </div>
-                            {message.image &&
-                              message.role === "bot" &&
-                              message.xml && (
-                                <div className="flex mt-5 justify-end">
-                                  <Button
-                                    className="bg-orange-500 hover:bg-orange-600"
-                                    onClick={() => {
-                                      if (
-                                        !(
-                                          primaryWorkspace.current &&
-                                          message.xml
-                                        )
-                                      )
-                                        return;
-                                      Blockly.Xml.domToWorkspace(
-                                        Blockly.utils.xml.textToDom(
-                                          message.xml
-                                        ),
-                                        primaryWorkspace.current
-                                      );
-                                    }}
-                                  >
-                                    <Plus className="h-5 w-5 mr-2" />
-                                    ワークスペースに追加
-                                  </Button>
+                          <div className="prose break-words overflow-wrap whitespace-pre-wrap">
+                            <Markdown>{message.text}</Markdown>
+                            {message.image && (
+                              <>
+                                <div className="border px-4">
+                                  <img
+                                    src={`data:image/png;base64,${message.image}`}
+                                    alt="Blockly Block Preview"
+                                  />
                                 </div>
-                              )}
-                          </>
-                        )}
-                      </div>
+                                {message.image &&
+                                  message.role === "bot" &&
+                                  message.xml && (
+                                    <div className="flex mt-5 justify-end">
+                                      <Button
+                                        className="bg-orange-500 hover:bg-orange-600"
+                                        onClick={() => {
+                                          if (
+                                            !(
+                                              primaryWorkspace.current &&
+                                              message.xml
+                                            )
+                                          )
+                                            return;
+                                          Blockly.Xml.domToWorkspace(
+                                            Blockly.utils.xml.textToDom(
+                                              message.xml
+                                            ),
+                                            primaryWorkspace.current
+                                          );
+                                        }}
+                                      >
+                                        <Plus className="h-5 w-5 mr-2" />
+                                        ワークスペースに追加
+                                      </Button>
+                                    </div>
+                                  )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
