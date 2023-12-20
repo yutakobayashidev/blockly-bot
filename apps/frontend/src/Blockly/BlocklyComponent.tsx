@@ -52,6 +52,7 @@ import { blockToPngBase64, readStreamData } from "@/lib/helper";
 import { BlocklyComponentProps, Message } from "@/types";
 import { toast } from "sonner";
 import MessageList from "@/components/message-list";
+import Cookies from "js-cookie";
 
 Blockly.setLocale(locale);
 
@@ -69,7 +70,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    setOnbording(true);
+    const onbording = Cookies.get("onbording");
+    if (!onbording) {
+      setOnbording(true);
+    }
   }, []);
 
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -255,7 +259,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         preconditionFn: () => "enabled",
         scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
         weight: 0,
-        // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: <explanation>
         callback: async (scope) => {
           try {
             setLoading(true);
@@ -276,31 +279,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 image: base64Image,
               },
             ]);
-
-            const response = await fetch(
-              `${import.meta.env.VITE_API_URL}/blockly-insight`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  image: `data:image/png;base64,${base64Image}`,
-                  xml: xmlText,
-                }),
-              }
-            );
-
-            if (!response.ok) {
-              toast.error("APIとの通信に失敗しました。");
-              setLoading(false);
-              return;
-            }
-
-            const data = response.body;
-            if (!data) {
-              return;
-            }
 
             let res = "";
 
@@ -346,6 +324,11 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       Blockly.ContextMenuRegistry.registry.unregister("ai_insight");
     };
   }, [props]);
+
+  const handleOnbording = () => {
+    Cookies.set("onbording", "true");
+    setOnbording(false);
+  };
 
   const handleDialogSubmit = async () => {
     setOpen(false);
@@ -539,7 +522,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={onbording} onOpenChange={setOnbording}>
+      <Dialog open={onbording} onOpenChange={handleOnbording}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-3xl text-center">
@@ -567,7 +550,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             </div>
           </div>
           <DialogFooter className="flex sm:justify-center">
-            <Button onClick={() => setOnbording(false)}>早速試す</Button>
+            <Button onClick={handleOnbording}>早速試す</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
