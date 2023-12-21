@@ -17,7 +17,7 @@ app.use(
   inject,
   ratelimit,
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "https://blockly.yutakobayashi.dev"],
     allowHeaders: ["Content-Type"],
     allowMethods: ["POST", "GET", "PATCH", "OPTIONS"],
     credentials: true,
