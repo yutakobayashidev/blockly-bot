@@ -61,7 +61,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [input, setInput] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [chengeprompt, setChengeprompt] = useState("");
-  const [selectedBlock, setSelectedBlock] = useState<Blockly.Block | null>(
+  const [selectedBlock, setSelectedBlock] = useState<Blockly.BlockSvg | null>(
     null
   );
   const [loading, setLoading] = useState(false);
@@ -129,6 +129,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       await readStreamData(
         `${import.meta.env.VITE_API_URL}/build-block`,
         { prompt: input },
+        "POST",
         (chunk) => {
           res += chunk;
 
@@ -287,6 +288,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                   Blockly.Xml.blockToDom(scope.block)
                 ),
               },
+              "POST",
               (chunk) => {
                 res += chunk;
 
@@ -331,43 +333,103 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
   const handleDialogSubmit = async () => {
     setOpen(false);
+    setLoading(true);
+
+    let res = "";
 
     if (primaryWorkspace.current && selectedBlock) {
-      const blockPosition = selectedBlock.getRelativeToSurfaceXY();
-      const xmlDom = Blockly.Xml.blockToDom(selectedBlock);
-      const xmlText = new XMLSerializer().serializeToString(xmlDom);
+      try {
+        const image = await blockToPngBase64(selectedBlock);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/build-block`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          {
+            text: chengeprompt,
+            role: "user",
+            type: "patch",
+            image,
           },
-          body: JSON.stringify({
-            prompt: `${chengeprompt}\n子どもが入力したXML\n\n${xmlText}`,
-          }),
+        ]);
+
+        await readStreamData(
+          `${import.meta.env.VITE_API_URL}/build-block`,
+          {
+            prompt: `${chengeprompt}\n子どもが入力したXML\n\n${Blockly.Xml.domToPrettyText(
+              Blockly.Xml.blockToDom(selectedBlock)
+            )}`,
+          },
+          "PATCH",
+          (chunk) => {
+            res += chunk;
+
+            setMessages((prevMessages) => {
+              let lastMessage = prevMessages[prevMessages.length - 1];
+
+              if (lastMessage && lastMessage.role === "bot") {
+                lastMessage = { ...lastMessage, text: res };
+                const updatedMessages = prevMessages
+                  .slice(0, -1)
+                  .concat(lastMessage);
+                return updatedMessages;
+              }
+              return [...prevMessages, { text: res, role: "bot" }];
+            });
+          }
+        );
+      } catch {
+        toast.error("ブロックの生成に失敗しました");
+      } finally {
+        if (!hiddenWorkspaceRef.current) {
+          hiddenWorkspaceRef.current = Blockly.inject(
+            document.createElement("div"),
+            {
+              readOnly: true,
+            }
+          );
         }
-      );
 
-      const json = await response.json();
+        const workspaceSvg = hiddenWorkspaceRef.current;
+        Blockly.Xml.domToWorkspace(
+          Blockly.utils.xml.textToDom(JSON.parse(res).xml),
+          workspaceSvg
+        );
+        const block = hiddenWorkspaceRef.current.getTopBlocks()[0];
 
-      const oldBlocks = primaryWorkspace.current.getAllBlocks();
-      Blockly.Xml.domToWorkspace(
-        Blockly.utils.xml.textToDom(json.code),
-        primaryWorkspace.current
-      );
+        workspaceSvg.clear();
 
-      const allBlocks = primaryWorkspace.current.getAllBlocks();
-      const newBlocks = allBlocks.filter((block) => !oldBlocks.includes(block));
+        const base64Image = await blockToPngBase64(block);
 
-      // @ts-ignore
-      selectedBlock.dispose();
-      if (newBlocks.length > 0) {
-        newBlocks[0].moveBy(blockPosition.x, blockPosition.y);
+        setMessages((prevMessages) => {
+          // 最後のメッセージを取得します
+          let lastMessage = prevMessages[prevMessages.length - 1];
+
+          if (lastMessage && lastMessage.role === "bot") {
+            lastMessage = {
+              ...lastMessage,
+              image: base64Image,
+              xml: JSON.parse(res).xml,
+            };
+            // 最後のメッセージを更新した配列を作成します
+            const updatedMessages = prevMessages
+              .slice(0, -1)
+              .concat(lastMessage);
+            return updatedMessages;
+          }
+          return [
+            ...prevMessages,
+            {
+              text: res,
+              role: "bot",
+              type: "patch",
+              image: base64Image,
+              xml: JSON.parse(res).xml,
+            },
+          ];
+        });
+
+        setSelectedBlock(null);
+        setLoading(false);
       }
-
-      setSelectedBlock(null);
     }
   };
 
@@ -378,6 +440,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       primaryWorkspace.current
     );
   };
+
   const handleFileRead = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -438,6 +501,20 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 コードを実行
               </Button>
               <Button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-orange-400 hover:bg-orange-500"
+              >
+                <FileUp className="mr-1.5 h-5 w-5" />
+                インポート
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileRead}
+                accept=".xml"
+              />
+              <Button
                 onClick={() => {
                   if (!primaryWorkspace.current) return;
 
@@ -456,24 +533,10 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                   link.remove();
                   URL.revokeObjectURL(url);
                 }}
-                className="bg-orange-400 hover:bg-orange-500"
+                className="bg-green-500 hover:bg-green-600"
               >
                 <FileDown className="mr-1.5 h-5 w-5" />
                 エクスポート
-              </Button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileRead}
-                accept=".xml"
-              />
-              <Button
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-green-500 hover:bg-green-600"
-              >
-                <FileUp className="mr-1.5 h-5 w-5" />
-                インポート
               </Button>
             </div>
             <div>

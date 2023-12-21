@@ -4,6 +4,7 @@ import {
   SYSTEM_PROMPT,
   SYSTEM_PATCH_PROMPT,
   INSIGHT_SYSTEM_PROMPT,
+  SYSTEM_FIX_PROMPT,
 } from "./prompts";
 import { HonoConfig } from "@/config";
 import { inject } from "./middleware/inject";
@@ -15,14 +16,8 @@ app.use(
   inject,
   cors({
     origin: ["http://localhost:5173"],
-    allowHeaders: [
-      "X-Custom-Header",
-      "Upgrade-Insecure-Requests",
-      "Content-Type",
-    ],
+    allowHeaders: ["Content-Type"],
     allowMethods: ["POST", "GET", "PATCH", "OPTIONS"],
-    exposeHeaders: ["Content-Length", "X-Kuma-Revision"],
-    maxAge: 600,
     credentials: true,
   })
 );
@@ -64,7 +59,7 @@ app.post("/build-block", async (c) => {
 app.patch("/build-block", async (c) => {
   const { prompt } = await c.req.json();
 
-  const chat = await c.get("openai").chat.completions.create({
+  const chatStream = await c.get("openai").chat.completions.create({
     messages: [
       {
         role: "system",
@@ -75,25 +70,69 @@ app.patch("/build-block", async (c) => {
         content: prompt,
       },
     ],
+    stream: true,
+    max_tokens: 1000,
+    response_format: { type: "json_object" },
+    model: "gpt-4-1106-preview",
+  });
+
+  return c.streamText(async (stream) => {
+    for await (const message of chatStream) {
+      await stream.write(message.choices[0].delta.content ?? "");
+    }
+  });
+});
+
+app.post("block-fix", async (c) => {
+  const { error, xml } = await c.req.json();
+
+  const chatStream = await c.get("openai").chat.completions.create({
+    model: "gpt-4-1106-preview",
+    max_tokens: 1000,
+    stream: true,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: SYSTEM_FIX_PROMPT,
+      },
+      {
+        role: "user",
+        content: `エラー: ${error}\n\nXML:${xml}`,
+      },
+    ],
+  });
+
+  return c.streamText(async (stream) => {
+    for await (const message of chatStream) {
+      const text = message.choices[0]?.delta.content ?? "";
+      await Promise.all(
+        Array.from(text).map(async (s) => {
+          await stream.write(s);
+          await stream.sleep(20);
+        })
+      );
+    }
+  });
+});
+
+app.post("ask", async (c) => {
+  const { prompt } = await c.req.json();
+
+  const chat = await c.get("openai").chat.completions.create({
     model: "gpt-3.5-turbo",
+    max_tokens: 1000,
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
   });
 
   const messageContent = chat.choices[0].message.content;
 
-  console.info(messageContent);
-
-  // 正規表現を使用して、Markdownのコードブロックを抽出
-  const codeRegex = /```(?:[a-zA-Z]*\n)?([\s\S]*?)```/g;
-  if (messageContent) {
-    const matches = codeRegex.exec(messageContent);
-
-    if (matches?.[1]) {
-      // 最初のコードブロックの内容を返す
-      return c.json({ code: matches[1].trim() });
-    }
-  }
-  // エラーコードを返す
-  return c.json({ error: "No code block found in the response." });
+  return c.json({ message: messageContent });
 });
 
 app.post("blockly-insight", async (c) => {

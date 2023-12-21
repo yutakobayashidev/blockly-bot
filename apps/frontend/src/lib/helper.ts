@@ -83,10 +83,11 @@ export async function blockToPngBase64(
 export const readStreamData = async <T>(
   url: string,
   body: T,
+  method: "POST" | "PATCH",
   updateOutput: (chunk: string) => void
 ) => {
   const response = await fetch(url, {
-    method: "POST",
+    method,
     headers: {
       "Content-Type": "application/json",
     },

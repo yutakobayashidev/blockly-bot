@@ -16,7 +16,7 @@ export type BlocklyComponentProps = {
 export type Message = {
   role: "user" | "bot" | "error";
   text: string;
-  type?: "insight" | "build";
+  type?: "insight" | "build" | "patch";
   image?: string;
   xml?: string;
 };
