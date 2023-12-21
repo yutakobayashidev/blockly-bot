@@ -35,7 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, ChangeEvent } from "react";
-import { Bot, Play, Code, Plus, FileUp, FileDown } from "lucide-react";
+import { Bot, Play, Code, Plus, FileUp, FileDown, Send } from "lucide-react";
 import { luaGenerator } from "blockly/lua";
 import {
   Dialog,
@@ -64,7 +64,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
   const [selectedBlock, setSelectedBlock] = useState<Blockly.BlockSvg | null>(
     null
   );
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setLoading] = useState(false);
   const [onbording, setOnbording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [open, setOpen] = useState(false);
@@ -379,56 +379,69 @@ function BlocklyComponent(props: BlocklyComponentProps) {
       } catch {
         toast.error("ブロックの生成に失敗しました");
       } finally {
-        if (!hiddenWorkspaceRef.current) {
-          hiddenWorkspaceRef.current = Blockly.inject(
-            document.createElement("div"),
-            {
-              readOnly: true,
-            }
-          );
-        }
-
-        const workspaceSvg = hiddenWorkspaceRef.current;
-        Blockly.Xml.domToWorkspace(
-          Blockly.utils.xml.textToDom(JSON.parse(res).xml),
-          workspaceSvg
-        );
-        const block = hiddenWorkspaceRef.current.getTopBlocks()[0];
-
-        workspaceSvg.clear();
-
-        const base64Image = await blockToPngBase64(block);
-
-        setMessages((prevMessages) => {
-          // 最後のメッセージを取得します
-          let lastMessage = prevMessages[prevMessages.length - 1];
-
-          if (lastMessage && lastMessage.role === "bot") {
-            lastMessage = {
-              ...lastMessage,
-              image: base64Image,
-              xml: JSON.parse(res).xml,
-            };
-            // 最後のメッセージを更新した配列を作成します
-            const updatedMessages = prevMessages
-              .slice(0, -1)
-              .concat(lastMessage);
-            return updatedMessages;
+        try {
+          if (!hiddenWorkspaceRef.current) {
+            hiddenWorkspaceRef.current = Blockly.inject(
+              document.createElement("div"),
+              {
+                readOnly: true,
+              }
+            );
           }
-          return [
-            ...prevMessages,
-            {
-              text: res,
-              role: "bot",
-              type: "patch",
-              image: base64Image,
-              xml: JSON.parse(res).xml,
-            },
-          ];
-        });
 
-        setSelectedBlock(null);
-        setLoading(false);
+          const workspaceSvg = hiddenWorkspaceRef.current;
+          Blockly.Xml.domToWorkspace(
+            Blockly.utils.xml.textToDom(JSON.parse(res).xml),
+            workspaceSvg
+          );
+          const block = hiddenWorkspaceRef.current.getTopBlocks()[0];
+
+          workspaceSvg.clear();
+
+          const base64Image = await blockToPngBase64(block);
+
+          setMessages((prevMessages) => {
+            // 最後のメッセージを取得します
+            let lastMessage = prevMessages[prevMessages.length - 1];
+
+            if (lastMessage && lastMessage.role === "bot") {
+              lastMessage = {
+                ...lastMessage,
+                image: base64Image,
+                xml: JSON.parse(res).xml,
+              };
+              // 最後のメッセージを更新した配列を作成します
+              const updatedMessages = prevMessages
+                .slice(0, -1)
+                .concat(lastMessage);
+              return updatedMessages;
+            }
+            return [
+              ...prevMessages,
+              {
+                text: res,
+                role: "bot",
+                type: "patch",
+                image: base64Image,
+                xml: JSON.parse(res).xml,
+              },
+            ];
+          });
+          setSelectedBlock(null);
+          setLoading(false);
+        } catch {
+          setMessages((prevMessages) => {
+            return [
+              ...prevMessages,
+              {
+                text: "ブロックの生成にエラーが発生しました。プロンプトをより具体的にしてみてください。",
+                role: "error",
+                type: "patch",
+              },
+            ];
+          });
+          setLoading(false);
+        }
       }
     }
   };
@@ -458,6 +471,8 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     };
     reader.readAsText(file);
   };
+
+  const disabled = isLoading || input.length === 0;
 
   return (
     <>
@@ -601,10 +616,29 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                   onChange={(event) => setInput(event.target.value)}
                 />
                 <Button
-                  disabled={loading}
+                  disabled={disabled}
                   onClick={() => handleBlockGenerate()}
                 >
-                  {loading ? "生成中..." : "生成"}
+                  {isLoading ? (
+                    <svg
+                      aria-hidden="true"
+                      className="h-4 w-4 animate-spin fill-stone-600 text-stone-200"
+                      viewBox="0 0 100 101"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+                        fill="currentColor"
+                      />
+                      <path
+                        d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+                        fill="currentFill"
+                      />
+                    </svg>
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </CardContent>
