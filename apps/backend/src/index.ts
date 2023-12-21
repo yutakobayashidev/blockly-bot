@@ -8,12 +8,14 @@ import {
 } from "./prompts";
 import { HonoConfig } from "@/config";
 import { inject } from "./middleware/inject";
+import { ratelimit } from "./middleware/ratelimit";
 
 const app = new Hono<HonoConfig>();
 
 app.use(
   "*",
   inject,
+  ratelimit,
   cors({
     origin: ["http://localhost:5173"],
     allowHeaders: ["Content-Type"],

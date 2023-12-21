@@ -5,6 +5,8 @@
     "deploy": "wrangler deploy --minify src/index.ts"
   },
   "dependencies": {
+    "@upstash/ratelimit": "^1.0.0",
+    "@upstash/redis": "^1.27.1",
     "hono": "^3.11.8",
     "openai": "^4.23.0"
   },
