@@ -677,13 +677,13 @@ function BlocklyComponent(props: BlocklyComponentProps) {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-3xl text-center">
-              BlocklyGPTの紹介
+              BlocklyBOTの紹介
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="text-gray-500 space-y-5">
               <p>
-                BlocklyGPTは、OpenAIの技術を活用して、Google
+                BlocklyBOTは、OpenAIの技術を活用して、Google
                 Blocklyのブロックを自然言語で操作する実験プロジェクトです。
               </p>
               <p>
