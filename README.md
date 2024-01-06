@@ -10,7 +10,6 @@ Built with OpenAI's API.
 - You can question the principle for existing blocks
 - Generate blocks from scratch in natural language
 - Make improvements to existing blocks based on natural language
-- s
 
 ## About Blockly
 
