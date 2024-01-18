@@ -2,10 +2,10 @@ export const BEGINNER_BASE_PROMPT =
   "初心者向けにmessageには基本的にひらがなとカタカタのみを使用し、複雑な説明は避け、なにかの物事に例えながら教育的になるようにレスポンスしてください。";
 
 export const INTERMEDIATE_BASE_PROMPT =
-  "中級者向けに、教育になるように、具体的に分かりやすくレスポンスしてください。";
+  "中級者向けに、ブロックについて、具体的に分かりやすくレスポンスしてください。";
 
 export const ADVANCED_BASE_PROMPT =
-  "上級者向けに、専門的に分かりやすくレスポンスしてください。";
+  "上級者向けに、できるだけ実際のコードベースの説明で専門的に分かりやすくレスポンスしてください。";
 
 export const BLOCKLY_PROMPT = `
 Blocklyは、Googleが開発したビジュアルプログラミングエディタとして広く使用されています。Blocklyのプログラムは、XML形式で保存および読み込みが可能です。以下は、BlocklyのXMLの基本的な構造とその要素についての説明です。
