@@ -9,6 +9,8 @@ import {
 import { HonoConfig } from "@/config";
 import { inject } from "./middleware/inject";
 import { ratelimit } from "./middleware/ratelimit";
+import { vValidator } from "@hono/valibot-validator";
+import { buildSchema, insightSchema } from "@/schema";
 
 const app = new Hono<HonoConfig>();
 
@@ -24,14 +26,14 @@ app.use(
   })
 );
 
-app.post("/build-block", async (c) => {
-  const { prompt } = await c.req.json();
+app.post("/build-block", vValidator("json", buildSchema), async (c) => {
+  const { prompt, level } = await c.req.valid("json");
 
   const chatStream = await c.get("openai").chat.completions.create({
     messages: [
       {
         role: "system",
-        content: SYSTEM_PROMPT,
+        content: SYSTEM_PROMPT(level),
       },
       {
         role: "user",
@@ -58,14 +60,14 @@ app.post("/build-block", async (c) => {
   });
 });
 
-app.patch("/build-block", async (c) => {
-  const { prompt } = await c.req.json();
+app.patch("/build-block", vValidator("json", buildSchema), async (c) => {
+  const { prompt, level } = await c.req.valid("json");
 
   const chatStream = await c.get("openai").chat.completions.create({
     messages: [
       {
         role: "system",
-        content: SYSTEM_PATCH_PROMPT,
+        content: SYSTEM_PATCH_PROMPT(level),
       },
       {
         role: "user",
@@ -137,8 +139,8 @@ app.post("ask", async (c) => {
   return c.json({ message: messageContent });
 });
 
-app.post("blockly-insight", async (c) => {
-  const { image, xml } = await c.req.json();
+app.post("blockly-insight", vValidator("json", insightSchema), async (c) => {
+  const { image, xml, level } = await c.req.valid("json");
 
   const chatStream = await c.get("openai").chat.completions.create({
     model: "gpt-4-vision-preview",
@@ -147,7 +149,7 @@ app.post("blockly-insight", async (c) => {
     messages: [
       {
         role: "system",
-        content: INSIGHT_SYSTEM_PROMPT,
+        content: INSIGHT_SYSTEM_PROMPT(level),
       },
       {
         role: "user",

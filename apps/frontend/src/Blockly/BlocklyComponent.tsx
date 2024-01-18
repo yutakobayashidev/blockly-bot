@@ -52,6 +52,7 @@ import { blockToPngBase64, readStreamData } from "@/lib/helper";
 import { BlocklyComponentProps, Message } from "@/types";
 import { toast } from "sonner";
 import MessageList from "@/components/message-list";
+import Onboarding from "@/dialog/onbording";
 import Cookies from "js-cookie";
 
 Blockly.setLocale(locale);
@@ -65,17 +66,9 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     null
   );
   const [isLoading, setLoading] = useState(false);
-  const [onbording, setOnbording] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [open, setOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const onbording = Cookies.get("onbording");
-    if (!onbording) {
-      setOnbording(true);
-    }
-  }, []);
 
   const hiddenWorkspaceRef = useRef<Blockly.WorkspaceSvg | null>(null);
   const primaryWorkspace = useRef<Blockly.WorkspaceSvg | null>(null);
@@ -128,7 +121,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
 
       await readStreamData(
         `${import.meta.env.VITE_API_URL}/build-block`,
-        { prompt: input },
+        { prompt: input, level: Cookies.get("level") || "beginner" },
         "POST",
         (chunk) => {
           res += chunk;
@@ -287,6 +280,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
                 xml: Blockly.Xml.domToPrettyText(
                   Blockly.Xml.blockToDom(scope.block)
                 ),
+                level: Cookies.get("level") || "beginner",
               },
               "POST",
               (chunk) => {
@@ -326,11 +320,6 @@ function BlocklyComponent(props: BlocklyComponentProps) {
     };
   }, [props]);
 
-  const handleOnbording = () => {
-    Cookies.set("onbording", "true");
-    setOnbording(false);
-  };
-
   const handleDialogSubmit = async () => {
     setOpen(false);
     setLoading(true);
@@ -357,6 +346,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
             prompt: `${chengeprompt}\n子どもが入力したXML\n\n${Blockly.Xml.domToPrettyText(
               Blockly.Xml.blockToDom(selectedBlock)
             )}`,
+            level: Cookies.get("level") || "beginner",
           },
           "PATCH",
           (chunk) => {
@@ -673,38 +663,7 @@ function BlocklyComponent(props: BlocklyComponentProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={onbording} onOpenChange={handleOnbording}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-3xl text-center">
-              BlocklyBOTの紹介
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="text-gray-500 space-y-5">
-              <p>
-                BlocklyBOTは、OpenAIの技術を活用して、Google
-                Blocklyのブロックを自然言語で操作する実験プロジェクトです。
-              </p>
-              <p>
-                自然言語から既存のブロックの原理を説明したり、新しくブロックを作成したりしてくれます。このプロジェクトの目的は、プログラミング学習をAI技術でより簡単にすることです。
-              </p>
-              <p>
-                <a
-                  className="text-blue-600"
-                  href="https://github.com/yutakobayashidev/blockly-gpt/tree/main"
-                >
-                  GitHub
-                </a>
-                でOSSプロジェクトとして取り組んでいます。
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="flex sm:justify-center">
-            <Button onClick={handleOnbording}>早速試す</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Onboarding />
     </>
   );
 }
