@@ -1,4 +1,4 @@
-# blockly-gpt [![Built on Blockly](https://tinyurl.com/built-on-blockly)](https://github.com/google/blockly)
+# blockly-bot [![Built on Blockly](https://tinyurl.com/built-on-blockly)](https://github.com/google/blockly)
 
 This project is an educational tool designed to generate Google Blockly blocks from natural language, explain unclear parts of existing blocks, or make modifications to them.
 
