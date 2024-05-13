@@ -1,0 +1,7 @@
+name = "blockly"
+compatibility_date = "2023-01-01"
+
+vars = { ENVIRONMENT = "development" }
+
+[env.production]
+vars = { ENVIRONMENT = "production" }

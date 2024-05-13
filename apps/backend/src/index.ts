@@ -14,17 +14,16 @@ import { buildSchema, insightSchema } from "@/schema";
 
 const app = new Hono<HonoConfig>();
 
-app.use(
-  "*",
-  inject,
-  ratelimit,
-  cors({
-    origin: ["http://localhost:5173", "https://blockly.yutakobayashi.dev"],
+app.use('*', inject, ratelimit, async (c, next) => {
+  await cors({
+    origin: c.env.ENVIRONMENT === 'production'
+      ? 'https://blockly.yutakobayashi.dev'
+      : "http://localhost:5173",
     allowHeaders: ["Content-Type"],
     allowMethods: ["POST", "GET", "PATCH", "OPTIONS"],
     credentials: true,
-  })
-);
+  })(c, next);
+});
 
 app.post("/build-block", vValidator("json", buildSchema), async (c) => {
   const { prompt, level } = await c.req.valid("json");
@@ -87,7 +86,7 @@ app.patch("/build-block", vValidator("json", buildSchema), async (c) => {
   });
 });
 
-app.post("block-fix", async (c) => {
+app.post("/block-fix", async (c) => {
   const { error, xml } = await c.req.json();
 
   const chatStream = await c.get("openai").chat.completions.create({
@@ -120,7 +119,7 @@ app.post("block-fix", async (c) => {
   });
 });
 
-app.post("ask", async (c) => {
+app.post("/ask", async (c) => {
   const { prompt } = await c.req.json();
 
   const chat = await c.get("openai").chat.completions.create({
@@ -139,7 +138,7 @@ app.post("ask", async (c) => {
   return c.json({ message: messageContent });
 });
 
-app.post("blockly-insight", vValidator("json", insightSchema), async (c) => {
+app.post("/blockly-insight", vValidator("json", insightSchema), async (c) => {
   const { image, xml, level } = await c.req.valid("json");
 
   const chatStream = await c.get("openai").chat.completions.create({
