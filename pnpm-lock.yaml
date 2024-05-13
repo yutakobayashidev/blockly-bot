@@ -16,7 +16,7 @@ importers:
     dependencies:
       '@hono/valibot-validator':
         specifier: ^0.2.1
-        version: 0.2.1(hono@3.11.8)(valibot@0.25.0)
+        version: 0.2.1(hono@4.2.7)(valibot@0.25.0)
       '@upstash/ratelimit':
         specifier: ^1.0.0
         version: 1.0.0
@@ -24,8 +24,8 @@ importers:
         specifier: ^1.27.1
         version: 1.27.1
       hono:
-        specifier: ^3.11.8
-        version: 3.11.8
+        specifier: ^4.2.7
+        version: 4.2.7
       openai:
         specifier: ^4.23.0
         version: 4.23.0
@@ -1015,13 +1015,13 @@ packages:
     engines: {node: '>=14'}
     dev: true
 
-  /@hono/valibot-validator@0.2.1(hono@3.11.8)(valibot@0.25.0):
+  /@hono/valibot-validator@0.2.1(hono@4.2.7)(valibot@0.25.0):
     resolution: {integrity: sha512-C74FACKrlD9YCvyIB4Z1OVbMskhIIttPapHU8co0DV0dQvP1NiQ0YisAqJ1RmIIUUz1G6BMxh4TGx+GG0NwxGQ==}
     peerDependencies:
       hono: '>=3.9.0'
       valibot: ^0.13.1
     dependencies:
-      hono: 3.11.8
+      hono: 4.2.7
       valibot: 0.25.0
     dev: false
 
@@ -2929,8 +2929,8 @@ packages:
     resolution: {integrity: sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A==}
     dev: false
 
-  /hono@3.11.8:
-    resolution: {integrity: sha512-s+7FDN0CS0lAvooyj4oQw0PyEec7I+YuVg40gtFHuUrfHBEhKITrLu4dskTdeYn0Xvhbz7s4yRJebJx6gCN/5Q==}
+  /hono@4.2.7:
+    resolution: {integrity: sha512-k1xHi86tJnRIVvqhFMBDGFKJ8r5O+bEsT4P59ZK59r0F300Xd910/r237inVfuT/VmE86RQQffX4OYNda6dLXw==}
     engines: {node: '>=16.0.0'}
     dev: false
 
