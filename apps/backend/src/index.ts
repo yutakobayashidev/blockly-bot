@@ -11,6 +11,7 @@ import { inject } from "./middleware/inject";
 import { ratelimit } from "./middleware/ratelimit";
 import { vValidator } from "@hono/valibot-validator";
 import { buildSchema, insightSchema } from "@/schema";
+import { streamText } from 'hono/streaming'
 
 const app = new Hono<HonoConfig>();
 
@@ -24,6 +25,7 @@ app.use('*', inject, ratelimit, async (c, next) =>
     credentials: true,
   })(c, next)
 );
+
 
 
 app.post("/build-block", vValidator("json", buildSchema), async (c) => {
@@ -42,12 +44,12 @@ app.post("/build-block", vValidator("json", buildSchema), async (c) => {
     ],
     stream: true,
     response_format: { type: "json_object" },
-    model: "gpt-4-1106-preview",
+    model: "gpt-4o",
   });
 
   c.header("Content-Type", "text/event-stream");
 
-  return c.streamText(async (stream) => {
+  return streamText(c, async (stream) => {
     for await (const message of chatStream) {
       const text = message.choices[0]?.delta.content ?? "";
       await Promise.all(
@@ -80,7 +82,7 @@ app.patch("/build-block", vValidator("json", buildSchema), async (c) => {
     model: "gpt-4-1106-preview",
   });
 
-  return c.streamText(async (stream) => {
+  return streamText(c, async (stream) => {
     for await (const message of chatStream) {
       await stream.write(message.choices[0].delta.content ?? "");
     }
@@ -91,7 +93,7 @@ app.post("/block-fix", async (c) => {
   const { error, xml } = await c.req.json();
 
   const chatStream = await c.get("openai").chat.completions.create({
-    model: "gpt-4-1106-preview",
+    model: "gpt-4o",
     max_tokens: 1000,
     stream: true,
     response_format: { type: "json_object" },
@@ -107,7 +109,7 @@ app.post("/block-fix", async (c) => {
     ],
   });
 
-  return c.streamText(async (stream) => {
+  return streamText(c, async (stream) => {
     for await (const message of chatStream) {
       const text = message.choices[0]?.delta.content ?? "";
       await Promise.all(
@@ -124,7 +126,7 @@ app.post("/ask", async (c) => {
   const { prompt } = await c.req.json();
 
   const chat = await c.get("openai").chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o",
     max_tokens: 1000,
     messages: [
       {
@@ -143,7 +145,7 @@ app.post("/blockly-insight", vValidator("json", insightSchema), async (c) => {
   const { image, xml, level } = await c.req.valid("json");
 
   const chatStream = await c.get("openai").chat.completions.create({
-    model: "gpt-4-vision-preview",
+    model: "gpt-4o",
     stream: true,
     max_tokens: 1000,
     messages: [
@@ -169,11 +171,13 @@ app.post("/blockly-insight", vValidator("json", insightSchema), async (c) => {
     ],
   });
 
-  return c.streamText(async (stream) => {
+  return streamText(c, (async (stream) => {
     for await (const message of chatStream) {
       await stream.write(message.choices[0].delta.content ?? "");
     }
-  });
-});
+  }
+  ));
+}
+);
 
 export default app;

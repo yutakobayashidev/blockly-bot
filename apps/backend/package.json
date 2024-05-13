@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "scripts": {
-    "dev": "wrangler dev src/index.ts",
+    "dev": "wrangler dev src/index.ts --port 5173",
     "deploy": "wrangler deploy --minify src/index.ts"
   },
   "dependencies": {
@@ -9,7 +9,7 @@
     "@upstash/ratelimit": "^1.0.0",
     "@upstash/redis": "^1.27.1",
     "hono": "^4.2.7",
-    "openai": "^4.23.0",
+    "openai": "^4.46.0",
     "valibot": "^0.25.0"
   },
   "devDependencies": {
