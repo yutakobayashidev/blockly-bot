@@ -14,16 +14,17 @@ import { buildSchema, insightSchema } from "@/schema";
 
 const app = new Hono<HonoConfig>();
 
-app.use('*', inject, ratelimit, async (c, next) => {
-  await cors({
+app.use('*', inject, ratelimit, async (c, next) =>
+  cors({
     origin: c.env.ENVIRONMENT === 'production'
       ? 'https://blockly.yutakobayashi.dev'
       : "http://localhost:5173",
     allowHeaders: ["Content-Type"],
     allowMethods: ["POST", "GET", "PATCH", "OPTIONS"],
     credentials: true,
-  })(c, next);
-});
+  })(c, next)
+);
+
 
 app.post("/build-block", vValidator("json", buildSchema), async (c) => {
   const { prompt, level } = await c.req.valid("json");
