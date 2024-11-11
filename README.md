@@ -1,5 +1,8 @@
 # blockly-bot [![Built on Blockly](https://tinyurl.com/built-on-blockly)](https://github.com/google/blockly)
 
+> [!NOTE]
+> This project is a PoC and has been archived. Please check out the more practical [TutoriaLLM](https://github.com/TutoriaLLM/TutoriaLLM) instead.
+
 This project is an educational tool designed to generate Google Blockly blocks from natural language, explain unclear parts of existing blocks, or make modifications to them.
 
 Built with OpenAI's API.
